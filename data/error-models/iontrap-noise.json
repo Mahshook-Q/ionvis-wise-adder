@@ -1,0 +1,9 @@
+{
+  "T1_ms": 1100,
+  "T2_ms": 100,
+  "single_qubit_fidelity": 0.9995,
+  "two_qubit_MS_fidelity": 0.995,
+  "shuttling_infidelity_per_op": 0.0001,
+  "readout_fidelity": 0.997,
+  "laser_crosstalk": 0.002
+}

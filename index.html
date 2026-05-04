@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IonVis - Quanutm Arithmetic Simulator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "outline-variant": "#3b494c",
+        "surface-container-low": "#1a1c1e",
+        "on-primary-container": "#00626e",
+        "error-container": "#93000a",
+        "tertiary": "#ebebff",
+        "inverse-primary": "#006875",
+        "surface-dim": "#121416",
+        "surface-tint": "#00daf3",
+        "on-primary-fixed-variant": "#004f58",
+        "surface-container-highest": "#333537",
+        "on-primary": "#00363d",
+        "on-tertiary-container": "#193df1",
+        "on-primary-fixed": "#001f24",
+        "primary": "#c3f5ff",
+        "error": "#ffb4ab",
+        "tertiary-fixed": "#dee0ff",
+        "surface-bright": "#38393c",
+        "surface-variant": "#333537",
+        "surface": "#121416",
+        "primary-container": "#00e5ff",
+        "surface-container-lowest": "#0c0e10",
+        "inverse-surface": "#e2e2e5",
+        "secondary": "#f8acff",
+        "outline": "#849396",
+        "on-surface": "#e2e2e5",
+        "surface-container-high": "#282a2c",
+        "background": "#121416",
+        "secondary-fixed": "#ffd6ff",
+        "on-secondary": "#570067",
+        "on-surface-variant": "#bac9cc",
+        "primary-fixed": "#9cf0ff",
+        "surface-container": "#1e2022",
+        "primary-fixed-dim": "#00daf3",
+        "secondary-fixed-dim": "#f8acff",
+        "secondary-container": "#e248ff",
+        "wise-dynamic": "#4ade80",
+        "wise-shim": "#60a5fa",
+        "wise-dac": "#fbbf24"
+      },
+      fontFamily: { "headline": ["Space Grotesk"], "body": ["Space Grotesk"], "label": ["Space Grotesk"], "mono": ["JetBrains Mono"] },
+      borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+    },
+  },
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #121416; color: #e2e2e5; -webkit-font-smoothing: antialiased; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+  .glass-panel { background: rgba(51,53,55,0.6); backdrop-filter: blur(24px); border-top: 1px solid rgba(132,147,150,0.1); border-left: 1px solid rgba(132,147,150,0.1); }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Pages */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: block; }
+
+  /* Ion animations */
+  @keyframes ionPulse { 0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.85} }
+  @keyframes laserBeam { 0%{opacity:0;transform:scaleX(0)}30%{opacity:1;transform:scaleX(1)}70%{opacity:1}100%{opacity:0} }
+  @keyframes photonEmit { 0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-40px) scale(0.2)} }
+  @keyframes fadeSlideUp { 0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)} }
+  @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+  @keyframes progressGlow { 0%,100%{box-shadow:0 0 6px #00e5ff}50%{box-shadow:0 0 16px #00e5ff,0 0 30px rgba(0,229,255,0.3)} }
+  @keyframes wiseSignal { 0%{stroke-dashoffset:40}100%{stroke-dashoffset:0} }
+  @keyframes wiseFlash { 0%,100%{opacity:0.3}50%{opacity:1} }
+  @keyframes ionShuttle { 0%{transform:translateX(0)}50%{transform:translateX(var(--shuttle-dx,30px))}100%{transform:translateX(0)} }
+  @keyframes dacPulse { 0%,100%{fill-opacity:0.4}50%{fill-opacity:1} }
+  @keyframes noiseStatic { 0%,100%{opacity:0.2}25%{opacity:0.7}75%{opacity:0.5} }
+  @keyframes entangleRing { 0%{r:18;opacity:0}100%{r:55;opacity:0.6} }
+
+  .animate-fadeSlideUp { animation: fadeSlideUp 0.3s ease both; }
+  .animate-spin-slow { animation: spin 10s linear infinite; }
+  .progress-glow { animation: progressGlow 1.5s ease infinite; }
+  .wise-signal-anim { animation: wiseSignal 0.6s linear infinite; }
+  .wise-flash { animation: wiseFlash 1.2s ease infinite; }
+
+  /* Truth table */
+  .truth-row { transition: all 0.3s ease; }
+  .truth-row.active { background: rgba(195,245,255,0.12); border-left: 2px solid #c3f5ff; }
+  .truth-row.active-carry { background: rgba(248,172,255,0.12); border-left: 2px solid #f8acff; }
+
+  /* Gate chip */
+  .gate-chip { cursor: grab; user-select: none; transition: all 0.15s ease; }
+  .gate-chip:hover { transform: translateY(-2px); }
+  .gate-chip:active { cursor: grabbing; transform: scale(0.95); }
+  .circuit-cell { transition: background 0.2s; min-height: 72px; position: relative; }
+  .circuit-cell.drag-over { background: rgba(195,245,255,0.08); border-radius: 4px; }
+  .circuit-cell .placed-gate { animation: fadeSlideUp 0.25s ease both; }
+
+  /* Bar fills */
+  .bar-fill { transition: width 1s cubic-bezier(0.34,1.56,0.64,1); }
+  .noise-bar { transition: height 0.5s ease; }
+
+  /* WISE electrode types */
+  .electrode-dynamic { fill: rgba(74,222,128,0.15); stroke: #4ade80; stroke-width: 1; }
+  .electrode-shim { fill: rgba(96,165,250,0.15); stroke: #60a5fa; stroke-width: 1; }
+  .electrode-gate-zone { fill: rgba(195,245,255,0.08); stroke: #c3f5ff; stroke-width: 0.5; stroke-dasharray: 3,2; }
+  .dac-box { fill: rgba(251,191,36,0.15); stroke: #fbbf24; stroke-width: 1; rx: 3; }
+
+  /* WISE wiring lines */
+  .wire-active { stroke: #4ade80; stroke-width: 1.5; stroke-dasharray: 6,3; animation: wiseSignal 0.8s linear infinite; }
+  .wire-idle { stroke: #3b494c; stroke-width: 1; stroke-dasharray: 3,4; }
+  .wire-mux { stroke: #fbbf24; stroke-width: 1.2; stroke-dasharray: 4,3; }
+  .wire-noise { stroke: #ffb4ab; stroke-width: 1.5; stroke-dasharray: 2,2; animation: noiseStatic 0.3s linear infinite; }
+
+  /* QCCD zone tabs */
+  .zone-tab { cursor: pointer; transition: all 0.2s; }
+  .zone-tab.active-zone { background: rgba(195,245,255,0.12); border-color: #c3f5ff; color: #c3f5ff; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #0c0e10; }
+  ::-webkit-scrollbar-thumb { background: #3b494c; border-radius: 10px; }
+
+  /* Tooltip */
+  .tooltip-wrap { position: relative; }
+  .tooltip-wrap:hover .tooltip-body { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .tooltip-body { opacity: 0; pointer-events: none; transform: translateY(4px); transition: all 0.2s; position: absolute; bottom: calc(100% + 8px); left: 50%; translate: -50% 0; background: #1e2022; border: 1px solid #3b494c; border-radius: 4px; padding: 8px 10px; font-size: 11px; white-space: nowrap; z-index: 50; color: #e2e2e5; }
+
+  /* WISE comparison meter */
+  .compare-bar { height: 8px; border-radius: 4px; transition: width 1.2s cubic-bezier(0.34,1.56,0.64,1); }
+
+  /* Tab pills */
+  .tab-pill { cursor: pointer; padding: 4px 12px; border-radius: 2px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.2s; }
+  .tab-pill.active { background: rgba(195,245,255,0.15); color: #c3f5ff; }
+  .tab-pill:not(.active) { color: #849396; }
+  .tab-pill:hover:not(.active) { color: #bac9cc; }
+</style>
+</head>
+<body class="overflow-x-hidden">
+
+<!-- ═══ TOP BAR ═══ -->
+<header class="fixed top-0 w-full z-50 flex items-center px-4 h-16 bg-[#121416]/90 backdrop-filter backdrop-blur-xl border-b border-[#c3f5ff]/10 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+  <div class="flex items-center gap-3">
+    <span class="material-symbols-outlined text-[#c3f5ff] text-2xl">blur_on</span>
+    <div>
+      <h1 class="text-lg font-bold tracking-tighter text-[#c3f5ff] leading-none
+        drop-shadow-[0_0_8px_rgba(0,229,255,0.4)]">IonVis</h1>
+      <p class="text-[9px] text-[#849396] uppercase tracking-[0.2em] leading-none">Quantum
+      Arithmetic Simulator</p>
+    </div>
+  </div>
+  <div class="ml-auto hidden md:flex gap-1 mr-4">
+    <button onclick="showPage('trap')" class="nav-link text-xs font-medium tracking-wide px-3 py-1.5 rounded transition-colors" data-page="trap">Trap</button>
+    <button onclick="showPage('wise')" class="nav-link text-xs font-medium tracking-wide px-3 py-1.5 rounded transition-colors" data-page="wise">WISE</button>
+    <button onclick="showPage('library')" class="nav-link text-xs font-medium tracking-wide px-3 py-1.5 rounded transition-colors" data-page="library">Library</button>
+    <button onclick="showPage('gate')" class="nav-link text-xs font-medium tracking-wide px-3 py-1.5 rounded transition-colors" data-page="gate">Gate</button>
+    <button onclick="showPage('results')" class="nav-link text-xs font-medium tracking-wide px-3 py-1.5 rounded transition-colors" data-page="results">Results</button>
+  </div>
+  <button onclick="openTheory()" class="p-2 rounded-lg hover:bg-[#c3f5ff]/10 ml-2 tooltip-wrap">
+    <span class="material-symbols-outlined text-[#f8acff]/70 text-xl">auto_stories</span>
+    <span class="tooltip-body">Theory Guide</span>
+  </button>
+</header>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 pb-safe h-16 bg-[#121416]/95 backdrop-blur-2xl border-t border-[#c3f5ff]/15 shadow-[0_-10px_30px_rgba(0,0,0,0.6)]">
+  <button onclick="showPage('trap')" class="bottom-nav flex flex-col items-center py-1 px-2 rounded-lg transition-all duration-300" data-page="trap">
+    <span class="material-symbols-outlined text-xl">wb_iridescent</span>
+    <span class="text-[9px] uppercase tracking-widest mt-0.5">Trap</span>
+  </button>
+  <button onclick="showPage('wise')" class="bottom-nav flex flex-col items-center py-1 px-2 rounded-lg transition-all duration-300" data-page="wise">
+    <span class="material-symbols-outlined text-xl">hub</span>
+    <span class="text-[9px] uppercase tracking-widest mt-0.5">WISE</span>
+  </button>
+  <button onclick="showPage('library')" class="bottom-nav flex flex-col items-center py-1 px-2 rounded-lg transition-all duration-300" data-page="library">
+    <span class="material-symbols-outlined text-xl">account_tree</span>
+    <span class="text-[9px] uppercase tracking-widest mt-0.5">Library</span>
+  </button>
+  <button onclick="showPage('gate')" class="bottom-nav flex flex-col items-center py-1 px-2 rounded-lg transition-all duration-300" data-page="gate">
+    <span class="material-symbols-outlined text-xl">memory</span>
+    <span class="text-[9px] uppercase tracking-widest mt-0.5">Gate</span>
+  </button>
+  <button onclick="showPage('results')" class="bottom-nav flex flex-col items-center py-1 px-2 rounded-lg transition-all duration-300" data-page="results">
+    <span class="material-symbols-outlined text-xl">analytics</span>
+    <span class="text-[9px] uppercase tracking-widest mt-0.5">Results</span>
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════ PAGE: TRAP VIEW ═══ -->
+<div id="page-trap" class="page pt-16 pb-16">
+  <main class="px-4 py-6 max-w-7xl mx-auto">
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="w-6 h-[1px] bg-primary"></span>
+        <span class="text-primary text-xs tracking-[0.2em] uppercase">Live Ion Array</span>
+      </div>
+      <h2 class="text-3xl font-bold tracking-tight mb-1">Trap View</h2>
+      <p class="text-on-surface-variant text-sm">2-qubit addition with carry — Yb-171 ions in a linear Paul trap. Select algorithm to visualize gate sequences and noise propagation.</p>
+    </div>
+
+    <!-- Controls Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] uppercase tracking-widest text-outline block mb-3">Input A (qubit Q₀)</span>
+        <div class="flex gap-2">
+          <button onclick="setInput('A',0)" id="btnA0" class="flex-1 py-2 rounded text-sm font-bold border border-outline-variant/30 transition-all">|0⟩</button>
+          <button onclick="setInput('A',1)" id="btnA1" class="flex-1 py-2 rounded text-sm font-bold border border-outline-variant/30 transition-all">|1⟩</button>
+        </div>
+      </div>
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] uppercase tracking-widest text-outline block mb-3">Input B (qubit Q₁)</span>
+        <div class="flex gap-2">
+          <button onclick="setInput('B',0)" id="btnB0" class="flex-1 py-2 rounded text-sm font-bold border border-outline-variant/30 transition-all">|0⟩</button>
+          <button onclick="setInput('B',1)" id="btnB1" class="flex-1 py-2 rounded text-sm font-bold border border-outline-variant/30 transition-all">|1⟩</button>
+        </div>
+      </div>
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] uppercase tracking-widest text-outline block mb-3">Algorithm</span>
+        <select id="algoSelect" class="w-full bg-surface-container-lowest text-on-surface text-sm py-2 px-3 rounded border-b-2 border-outline-variant focus:border-primary outline-none">
+          <option value="halfAdder">Half Adder (XOR + AND)</option>
+          <option value="fullAdder">Full Adder (MS gates)</option>
+          <option value="ripple">Ripple-Carry (NISQ Noisy)</option>
+          <option value="wise_opt">WISE-Optimized (Transport Gates)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- WISE Mode Banner (shown only for wise_opt) -->
+    <div id="wiseBanner" style="display:none" class="mb-4 p-3 rounded-xl border border-[#4ade80]/30 bg-[#4ade80]/5 flex items-center gap-3">
+      <span class="material-symbols-outlined text-[#4ade80] text-lg">hub</span>
+      <div>
+        <span class="text-[10px] uppercase tracking-widest text-[#4ade80] font-bold">WISE Architecture Active</span>
+        <p class="text-xs text-on-surface-variant mt-0.5">Ions are shuttled to gate zones via QCCD transport. ~100 DACs shared via integrated switch network. Fidelity preserved through sample-and-hold electrode charging.</p>
+      </div>
+      <button onclick="showPage('wise')" class="ml-auto text-[10px] text-[#4ade80] border border-[#4ade80]/40 px-3 py-1 rounded hover:bg-[#4ade80]/10 transition-colors whitespace-nowrap">View WISE</button>
+    </div>
+
+    <!-- Ion Array Canvas -->
+    <div class="glass-panel rounded-xl p-4 mb-5 relative overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Ion Array Canvas</span>
+          <div id="algoModeBadge" class="text-[9px] px-2 py-0.5 rounded bg-surface-container-highest text-outline uppercase tracking-wider">Half Adder</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div id="simStatusDot" class="w-2 h-2 rounded-full bg-outline-variant"></div>
+          <span id="simStatusLabel" class="text-[10px] text-on-surface-variant uppercase tracking-wider">Ready</span>
+        </div>
+      </div>
+      <div class="relative w-full" style="min-height:340px;">
+        <svg id="trapCanvas" width="100%" height="340" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <radialGradient id="ionGradPrimary" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" style="stop-color:#c3f5ff;stop-opacity:1"/>
+              <stop offset="60%" style="stop-color:#00daf3;stop-opacity:0.8"/>
+              <stop offset="100%" style="stop-color:#00daf3;stop-opacity:0"/>
+            </radialGradient>
+            <radialGradient id="ionGradSecondary" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" style="stop-color:#f8acff;stop-opacity:1"/>
+              <stop offset="60%" style="stop-color:#e248ff;stop-opacity:0.8"/>
+              <stop offset="100%" style="stop-color:#e248ff;stop-opacity:0"/>
+            </radialGradient>
+            <radialGradient id="ionGradGreen" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1"/>
+              <stop offset="60%" style="stop-color:#16a34a;stop-opacity:0.8"/>
+              <stop offset="100%" style="stop-color:#16a34a;stop-opacity:0"/>
+            </radialGradient>
+            <radialGradient id="entangleGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" style="stop-color:#c3f5ff;stop-opacity:0.15"/>
+              <stop offset="100%" style="stop-color:#c3f5ff;stop-opacity:0"/>
+            </radialGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="strongGlow">
+              <feGaussianBlur stdDeviation="6" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- ZONE LABELS (QCCD) -->
+          <g id="zoneLabels" opacity="0.4">
+            <text x="100" y="18" fill="#4ade80" font-size="7" font-family="JetBrains Mono" letter-spacing="1">GATE ZONE A</text>
+            <text x="310" y="18" fill="#4ade80" font-size="7" font-family="JetBrains Mono" letter-spacing="1">GATE ZONE B</text>
+            <text x="530" y="18" fill="#60a5fa" font-size="7" font-family="JetBrains Mono" letter-spacing="1">READOUT ZONE</text>
+            <rect x="65" y="22" width="140" height="280" rx="4" fill="rgba(74,222,128,0.03)" stroke="#4ade80" stroke-width="0.5" stroke-dasharray="4,3"/>
+            <rect x="275" y="22" width="140" height="280" rx="4" fill="rgba(74,222,128,0.03)" stroke="#4ade80" stroke-width="0.5" stroke-dasharray="4,3"/>
+            <rect x="490" y="22" width="160" height="280" rx="4" fill="rgba(96,165,250,0.03)" stroke="#60a5fa" stroke-width="0.5" stroke-dasharray="4,3"/>
+          </g>
+
+          <!-- TRAP RAIL -->
+          <rect x="30" y="163" width="660" height="4" rx="2" fill="url(#ionGradPrimary)" opacity="0.12"/>
+          <rect x="30" y="163" width="660" height="4" rx="2" fill="none" stroke="#c3f5ff" stroke-width="0.5" opacity="0.2"/>
+
+          <!-- ELECTRODE SEGMENTS (dynamic = green, shim = blue) -->
+          <g id="electrodeGroup">
+            <!-- Dynamic electrodes (gate zone A) -->
+            <rect id="dyn-A1" x="70" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <rect id="dyn-A2" x="102" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <rect id="dyn-A3" x="134" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <rect id="dyn-A4" x="166" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <!-- Shim electrodes (gate zone A) -->
+            <rect id="shim-A1" x="70" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-A2" x="102" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-A3" x="134" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-A4" x="166" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <!-- Dynamic electrodes (gate zone B) -->
+            <rect id="dyn-B1" x="280" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <rect id="dyn-B2" x="312" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <rect id="dyn-B3" x="344" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <rect id="dyn-B4" x="376" y="148" width="28" height="18" rx="2" class="electrode-dynamic" opacity="0.5"/>
+            <!-- Shim electrodes (gate zone B) -->
+            <rect id="shim-B1" x="280" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-B2" x="312" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-B3" x="344" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-B4" x="376" y="170" width="28" height="12" rx="2" class="electrode-shim" opacity="0.4"/>
+            <!-- Readout zone electrodes -->
+            <rect id="shim-R1" x="495" y="148" width="28" height="30" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-R2" x="527" y="148" width="28" height="30" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-R3" x="559" y="148" width="28" height="30" rx="2" class="electrode-shim" opacity="0.4"/>
+            <rect id="shim-R4" x="591" y="148" width="28" height="30" rx="2" class="electrode-shim" opacity="0.4"/>
+          </g>
+
+          <!-- Electrode type labels -->
+          <g opacity="0.5">
+            <text x="70" y="146" fill="#4ade80" font-size="6" font-family="JetBrains Mono">D</text>
+            <text x="70" y="185" fill="#60a5fa" font-size="6" font-family="JetBrains Mono">S</text>
+            <text x="280" y="146" fill="#4ade80" font-size="6" font-family="JetBrains Mono">D</text>
+            <text x="280" y="185" fill="#60a5fa" font-size="6" font-family="JetBrains Mono">S</text>
+          </g>
+
+          <!-- Endcap labels -->
+          <text x="20" y="196" fill="#849396" font-size="8" font-family="Space Grotesk" opacity="0.5">DC+</text>
+          <text x="670" y="196" fill="#849396" font-size="8" font-family="Space Grotesk" opacity="0.5">DC-</text>
+
+          <!-- LASER BEAMS -->
+          <g id="laserGroup" opacity="0">
+            <line id="laserA" x1="135" y1="40" x2="135" y2="160" stroke="#c3f5ff" stroke-width="1.5" opacity="0.7" stroke-dasharray="4,3"/>
+            <line id="laserB" x1="345" y1="40" x2="345" y2="160" stroke="#f8acff" stroke-width="1.5" opacity="0.7" stroke-dasharray="4,3"/>
+            <line id="laserC" x1="540" y1="40" x2="540" y2="160" stroke="#c3f5ff" stroke-width="1.5" opacity="0.7" stroke-dasharray="4,3"/>
+          </g>
+          <g id="laserLabelGroup" opacity="0">
+            <text id="laserLabelA" x="108" y="36" fill="#c3f5ff" font-size="8" font-family="JetBrains Mono">729nm</text>
+            <text id="laserLabelB" x="320" y="36" fill="#f8acff" font-size="8" font-family="JetBrains Mono">411nm</text>
+            <text id="laserLabelC" x="517" y="36" fill="#00e5ff" font-size="8" font-family="JetBrains Mono">370nm</text>
+          </g>
+
+          <!-- ION A (Q0) — positioned in Gate Zone A -->
+          <g id="ionA" transform="translate(0,0)">
+            <circle id="ionAField" cx="135" cy="165" r="0" fill="url(#ionGradSecondary)" opacity="0.5"/>
+            <circle id="ionACore" cx="135" cy="165" r="10" fill="#c3f5ff" filter="url(#glow)"/>
+            <text id="ionALabel" x="135" y="205" fill="#c3f5ff" font-size="9" font-family="Space Grotesk" text-anchor="middle" font-weight="600">Q₀</text>
+            <text id="ionAState" x="135" y="218" fill="#849396" font-size="8" font-family="JetBrains Mono" text-anchor="middle">|0⟩</text>
+          </g>
+
+          <!-- ION B (Q1) — positioned in Gate Zone B -->
+          <g id="ionB" transform="translate(0,0)">
+            <circle id="ionBField" cx="345" cy="165" r="0" fill="url(#ionGradSecondary)" opacity="0.5"/>
+            <circle id="ionBCore" cx="345" cy="165" r="10" fill="#c3f5ff" filter="url(#glow)"/>
+            <text id="ionBLabel" x="345" y="205" fill="#c3f5ff" font-size="9" font-family="Space Grotesk" text-anchor="middle" font-weight="600">Q₁</text>
+            <text id="ionBState" x="345" y="218" fill="#849396" font-size="8" font-family="JetBrains Mono" text-anchor="middle">|0⟩</text>
+          </g>
+
+          <!-- ION C (ancilla) — readout zone -->
+          <g id="ionC">
+            <circle id="ionCField" cx="540" cy="165" r="0" fill="url(#ionGradSecondary)" opacity="0.5"/>
+            <circle id="ionCCore" cx="540" cy="165" r="10" fill="#333537" stroke="#849396" stroke-width="1" filter="url(#glow)"/>
+            <text id="ionCLabel" x="540" y="205" fill="#849396" font-size="9" font-family="Space Grotesk" text-anchor="middle" font-weight="600">Q₂</text>
+            <text id="ionCState" x="540" y="218" fill="#849396" font-size="8" font-family="JetBrains Mono" text-anchor="middle">|0⟩</text>
+          </g>
+
+          <!-- ENTANGLEMENT CIRCLES -->
+          <g id="entGroup">
+            <circle id="entCircleA" cx="135" cy="165" r="0" fill="none" stroke="#c3f5ff" stroke-width="1.5" stroke-dasharray="5,3" opacity="0"/>
+            <circle id="entCircleB" cx="345" cy="165" r="0" fill="none" stroke="#c3f5ff" stroke-width="1.5" stroke-dasharray="5,3" opacity="0"/>
+            <circle id="entCircleC" cx="540" cy="165" r="0" fill="none" stroke="#c3f5ff" stroke-width="1.5" stroke-dasharray="5,3" opacity="0"/>
+            <rect id="entOverlap" x="0" y="140" width="0" height="50" fill="rgba(195,245,255,0.04)" opacity="0"/>
+          </g>
+
+          <!-- TRANSPORT ARROW (WISE shuttle) -->
+          <g id="transportArrow" opacity="0">
+            <line id="transportLine" x1="155" y1="165" x2="305" y2="165" stroke="#4ade80" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowGreen)"/>
+            <text id="transportLabel" x="220" y="156" fill="#4ade80" font-size="8" font-family="JetBrains Mono" text-anchor="middle">SHUTTLE</text>
+          </g>
+          <defs>
+            <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#4ade80"/>
+            </marker>
+          </defs>
+
+          <!-- NOISE INDICATOR (ripple-carry) -->
+          <g id="noiseIndicator" opacity="0">
+            <text x="245" y="130" fill="#ffb4ab" font-size="9" font-family="JetBrains Mono" text-anchor="middle" id="noiseLabel">⚠ CROSSTALK</text>
+            <line x1="155" y1="155" x2="315" y2="155" stroke="#ffb4ab" stroke-width="1" stroke-dasharray="2,2" opacity="0.6" class="wire-noise"/>
+          </g>
+
+          <!-- PHONON MODE INDICATOR -->
+          <g id="phononGroup" opacity="0">
+            <text x="240" y="250" fill="#c3f5ff" font-size="8" font-family="JetBrains Mono" text-anchor="middle" opacity="0.7">COM phonon bus active</text>
+            <path id="phononWave" d="M120,240 Q175,230 240,240 Q305,250 345,240" fill="none" stroke="#c3f5ff" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+          </g>
+
+          <!-- PHOTON EMITTERS (placeholder — filled by JS) -->
+          <g id="photonGroup"></g>
+
+          <!-- STEP LOG -->
+          <foreignObject x="30" y="265" width="660" height="65">
+            <div xmlns="http://www.w3.org/1999/xhtml" id="stepLogBox" style="background:rgba(14,16,18,0.7);border:1px solid rgba(59,73,76,0.4);border-radius:4px;padding:8px 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#bac9cc;line-height:1.5;min-height:55px;">
+              <span style="color:#4ade80;font-size:9px;text-transform:uppercase;letter-spacing:0.15em;">Step Log</span><br/>
+              <span id="stepLogText">Select algorithm and press ▶ to begin simulation.</span>
+            </div>
+          </foreignObject>
+        </svg>
+      </div>
+
+      <!-- Sim Controls -->
+      <div class="flex items-center gap-3 mt-3 pt-3 border-t border-outline-variant/20">
+        <button onclick="simToggle()" id="simBtn" class="flex items-center gap-2 px-4 py-2 rounded bg-primary/10 border border-primary/30 text-primary text-xs font-bold hover:bg-primary/20 transition-all">
+          <span class="material-symbols-outlined text-base" id="simBtnIcon">play_arrow</span>
+          <span id="simBtnLabel">Run</span>
+        </button>
+        <button onclick="simStep()" class="flex items-center gap-2 px-3 py-2 rounded border border-outline-variant/30 text-on-surface-variant text-xs hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined text-base">skip_next</span>Step
+        </button>
+        <button onclick="simReset()" class="flex items-center gap-2 px-3 py-2 rounded border border-outline-variant/30 text-on-surface-variant text-xs hover:text-on-surface transition-all">
+          <span class="material-symbols-outlined text-base">replay</span>Reset
+        </button>
+        <div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden ml-2">
+          <div id="simProgress" class="h-full bg-primary rounded-full bar-fill" style="width:0%"></div>
+        </div>
+        <span id="stepCounter" class="text-xs font-mono text-on-surface-variant whitespace-nowrap">STEP: 0/0</span>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Truth Table + State Vector + Circuit Diagram -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <!-- Truth Table -->
+      <div class="glass-panel p-4 rounded-xl">
+        <h3 class="text-[10px] uppercase tracking-widest text-outline mb-3 font-bold">Truth Table</h3>
+        <div id="truthTable">
+          <div class="grid grid-cols-4 text-[9px] uppercase tracking-widest text-outline pb-2 border-b border-outline-variant/20 px-2">
+            <span>A</span><span>B</span><span>Sum</span><span>Carry</span>
+          </div>
+        </div>
+      </div>
+      <!-- State Vector -->
+      <div class="glass-panel p-4 rounded-xl">
+        <h3 class="text-[10px] uppercase tracking-widest text-outline mb-3 font-bold">State Vector</h3>
+        <div id="stateVector" class="space-y-2">
+          <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|00⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-primary rounded-full" style="width:100%"></div></div><span class="text-[10px] font-bold text-primary min-w-[28px] mono">1.00</span></div></div>
+          <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|01⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-primary rounded-full" style="width:0%"></div></div><span class="text-[10px] font-bold text-on-surface-variant min-w-[28px] mono">0.00</span></div></div>
+          <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|10⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-primary rounded-full" style="width:0%"></div></div><span class="text-[10px] font-bold text-on-surface-variant min-w-[28px] mono">0.00</span></div></div>
+          <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|11⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-secondary rounded-full" style="width:0%"></div></div><span class="text-[10px] font-bold text-on-surface-variant min-w-[28px] mono">0.00</span></div></div>
+        </div>
+      </div>
+      <!-- Mini Circuit Diagram -->
+      <div class="glass-panel p-4 rounded-xl">
+        <h3 class="text-[10px] uppercase tracking-widest text-outline mb-3 font-bold">Circuit Diagram</h3>
+        <svg id="miniCircuit" width="100%" height="120" viewBox="0 0 260 120"></svg>
+        <div id="circuitHighlight" class="text-[10px] text-on-surface-variant mt-2 mono" style="min-height:20px"></div>
+      </div>
+    </div>
+
+    <!-- ═══ BLOCH SPHERE PANEL ═══ -->
+    <div class="glass-panel rounded-xl p-5 mb-4">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-4 h-[1px] bg-[#f8acff]"></span>
+            <span class="text-[#f8acff] text-[9px] tracking-[0.2em] uppercase">Qubit State Visualizer</span>
+          </div>
+          <h3 class="text-sm font-bold uppercase tracking-widest">Bloch Sphere Representation</h3>
+        </div>
+        <div id="blochGateLabel" class="text-[10px] mono px-3 py-1 rounded bg-surface-container-highest text-outline border border-outline-variant/30">No gate applied</div>
+      </div>
+
+      <!-- Gate explanation strip -->
+      <div id="blochExplain" class="mb-4 p-3 rounded-lg bg-surface-container-lowest border border-outline-variant/20 text-[11px] text-on-surface-variant leading-relaxed mono" style="min-height:38px;">
+        Press ▶ to simulate and watch each gate operation rotate the Bloch sphere state vector in real time.
+      </div>
+
+      <!-- Three Bloch spheres: Q0, Q1, Q2 -->
+      <div class="grid grid-cols-3 gap-3">
+        <div class="flex flex-col items-center">
+          <span class="text-[9px] uppercase tracking-widest text-outline mb-2 font-bold">Q₀ · Input A</span>
+          <svg id="bloch-q0" width="100%" viewBox="0 0 160 180" style="max-width:180px"></svg>
+          <div id="bloch-q0-state" class="text-[10px] mono text-primary mt-1">|0⟩</div>
+          <div id="bloch-q0-angles" class="text-[9px] mono text-outline mt-0.5">θ=0° φ=0°</div>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[9px] uppercase tracking-widest text-outline mb-2 font-bold">Q₁ · Input B</span>
+          <svg id="bloch-q1" width="100%" viewBox="0 0 160 180" style="max-width:180px"></svg>
+          <div id="bloch-q1-state" class="text-[10px] mono text-primary mt-1">|0⟩</div>
+          <div id="bloch-q1-angles" class="text-[9px] mono text-outline mt-0.5">θ=0° φ=0°</div>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[9px] uppercase tracking-widest text-outline mb-2 font-bold">Q₂ · Ancilla / Carry</span>
+          <svg id="bloch-q2" width="100%" viewBox="0 0 160 180" style="max-width:180px"></svg>
+          <div id="bloch-q2-state" class="text-[10px] mono text-outline mt-1">|0⟩</div>
+          <div id="bloch-q2-angles" class="text-[9px] mono text-outline mt-0.5">θ=0° φ=0°</div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="flex flex-wrap gap-4 mt-4 pt-3 border-t border-outline-variant/20 text-[9px] mono text-outline">
+        <div class="flex items-center gap-1.5"><div class="w-3 h-0.5 bg-[#c3f5ff] rounded"></div>State vector |ψ⟩</div>
+        <div class="flex items-center gap-1.5"><div class="w-3 h-0.5 bg-[#f8acff] rounded opacity-60"></div>Equatorial plane</div>
+        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-[#4ade80]"></div>|0⟩ north pole</div>
+        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-[#f8acff]"></div>|1⟩ south pole</div>
+        <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-[#fbbf24]"></div>Superposition tip</div>
+        <div class="flex items-center gap-1.5"><span class="text-[#ffb4ab]">⚠</span> Mixed / error state</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════ PAGE: WISE ARCHITECTURE ═══ -->
+<div id="page-wise" class="page pt-16 pb-16">
+  <main class="px-4 py-6 max-w-7xl mx-auto">
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="w-6 h-[1px] bg-[#4ade80]"></span>
+        <span class="text-[#4ade80] text-xs tracking-[0.2em] uppercase">Malinowski et al., PRX Quantum 2023</span>
+      </div>
+      <h2 class="text-3xl font-bold tracking-tight mb-1">WISE Architecture</h2>
+      <p class="text-on-surface-variant text-sm max-w-2xl">Wiring Using Integrated Switching Electronics — the solution to the wiring challenge of scaling trapped-ion quantum computers to 1000+ qubits.</p>
+    </div>
+
+    <!-- The Wiring Challenge Banner -->
+    <div class="glass-panel rounded-xl p-5 mb-6 border border-[#ffb4ab]/20 bg-[#ffb4ab]/3">
+      <div class="flex items-start gap-4">
+        <span class="material-symbols-outlined text-[#ffb4ab] text-2xl mt-0.5">cable</span>
+        <div class="flex-1">
+          <h3 class="text-sm font-bold text-[#ffb4ab] mb-2 uppercase tracking-wider">The Wiring Challenge</h3>
+          <p class="text-xs text-on-surface-variant leading-relaxed">A 1000-qubit trapped-ion chip requires ~10 electrodes per qubit, and conventional control needs <strong class="text-on-surface">one dedicated DAC per electrode</strong> — that's ~10,000 control lines. This is beyond the physical limit of chip I/O and makes scaling <strong class="text-[#ffb4ab]">physically impossible</strong> with standard approaches. The arithmetic units (adders) that underpin quantum advantage hit this wall first during carry propagation.</p>
+          <div class="flex gap-4 mt-3">
+            <div class="text-center">
+              <span class="text-2xl font-bold text-[#ffb4ab] mono">10,000</span>
+              <p class="text-[9px] text-outline uppercase tracking-wider">DACs needed (standard)</p>
+            </div>
+            <div class="text-center">
+              <span class="text-2xl font-bold text-[#4ade80] mono">~200</span>
+              <p class="text-[9px] text-outline uppercase tracking-wider">Signal sources (WISE)</p>
+            </div>
+            <div class="text-center">
+              <span class="text-2xl font-bold text-primary mono">50×</span>
+              <p class="text-[9px] text-outline uppercase tracking-wider">I/O reduction</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WISE Architecture Diagram -->
+    <div class="glass-panel rounded-xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold uppercase tracking-widest">WISE Architecture Diagram</h3>
+        <div class="flex gap-2">
+          <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm bg-[#4ade80]/40 border border-[#4ade80]"></div><span class="text-[10px] text-on-surface-variant">Dynamic electrodes</span></div>
+          <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm bg-[#60a5fa]/40 border border-[#60a5fa]"></div><span class="text-[10px] text-on-surface-variant">Shim electrodes</span></div>
+          <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded-sm bg-[#fbbf24]/40 border border-[#fbbf24]"></div><span class="text-[10px] text-on-surface-variant">DACs</span></div>
+        </div>
+      </div>
+
+      <div class="relative w-full overflow-x-auto">
+        <svg id="wiseCanvas" width="100%" height="460" viewBox="0 0 720 460" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="arrowW" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L0,7 L7,3.5 z" fill="#fbbf24"/>
+            </marker>
+            <marker id="arrowG" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L0,7 L7,3.5 z" fill="#4ade80"/>
+            </marker>
+            <marker id="arrowB" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L0,7 L7,3.5 z" fill="#60a5fa"/>
+            </marker>
+          </defs>
+
+          <!-- OFF-CHIP SECTION -->
+          <rect x="10" y="20" width="200" height="420" rx="6" fill="rgba(14,16,18,0.6)" stroke="#3b494c" stroke-width="1" stroke-dasharray="6,3"/>
+          <text x="110" y="40" fill="#849396" font-size="9" font-family="JetBrains Mono" text-anchor="middle" letter-spacing="1">OFF-CHIP</text>
+
+          <!-- DACs (off chip) -->
+          <g id="dacGroup">
+            <rect x="25" y="55" width="70" height="30" rx="3" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1"/>
+            <text x="60" y="74" fill="#fbbf24" font-size="9" font-family="JetBrains Mono" text-anchor="middle">DAC 1</text>
+            <rect x="25" y="95" width="70" height="30" rx="3" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1"/>
+            <text x="60" y="114" fill="#fbbf24" font-size="9" font-family="JetBrains Mono" text-anchor="middle">DAC 2</text>
+            <rect x="25" y="135" width="70" height="30" rx="3" fill="rgba(251,191,36,0.15)" stroke="#fbbf24" stroke-width="1"/>
+            <text x="60" y="154" fill="#fbbf24" font-size="9" font-family="JetBrains Mono" text-anchor="middle">DAC 3</text>
+
+            <!-- Dynamic DAC pool -->
+            <rect x="105" y="55" width="90" height="110" rx="3" fill="rgba(74,222,128,0.08)" stroke="#4ade80" stroke-width="1" stroke-dasharray="3,2"/>
+            <text x="150" y="73" fill="#4ade80" font-size="8" font-family="JetBrains Mono" text-anchor="middle">~100 DACs</text>
+            <text x="150" y="85" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">(dynamic pool)</text>
+            <text x="150" y="97" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">FIXED COUNT</text>
+            <text x="150" y="109" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">regardless of N</text>
+            <text x="150" y="125" fill="#4ade80" font-size="7" font-family="JetBrains Mono" text-anchor="middle">N = 1000 qubits</text>
+            <text x="150" y="140" fill="#4ade80" font-size="7" font-family="JetBrains Mono" text-anchor="middle">same pool!</text>
+
+            <!-- Shim DAC annotation -->
+            <text x="60" y="185" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">Shim DACs</text>
+            <text x="60" y="197" fill="#60a5fa" font-size="7" font-family="JetBrains Mono" text-anchor="middle">1 DAC : ~100 elec.</text>
+            <text x="60" y="210" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">(demux network)</text>
+          </g>
+
+          <!-- WIRE BONDS (QPU interface) -->
+          <line x1="200" y1="120" x2="240" y2="120" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrowW)"/>
+          <line x1="200" y1="70" x2="240" y2="230" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrowG)"/>
+          <text x="215" y="112" fill="#fbbf24" font-size="7" font-family="JetBrains Mono" opacity="0.7">~200</text>
+          <text x="205" y="155" fill="#4ade80" font-size="7" font-family="JetBrains Mono" opacity="0.7">wire bonds</text>
+
+          <!-- QPU CHIP -->
+          <rect x="240" y="20" width="470" height="420" rx="6" fill="rgba(18,20,22,0.8)" stroke="#c3f5ff" stroke-width="1.5"/>
+          <text x="475" y="40" fill="#c3f5ff" font-size="9" font-family="JetBrains Mono" text-anchor="middle" letter-spacing="2">QPU — ION TRAP IC + SWITCH NETWORK</text>
+          <text x="475" y="52" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">8mm × 22mm chip  |  fabricated with standard semiconductor process</text>
+
+          <!-- SWITCH NETWORK -->
+          <rect x="255" y="60" width="120" height="80" rx="4" fill="rgba(195,245,255,0.05)" stroke="#c3f5ff" stroke-width="1"/>
+          <text x="315" y="78" fill="#c3f5ff" font-size="8" font-family="JetBrains Mono" text-anchor="middle">Switch Network</text>
+          <text x="315" y="91" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">(integrated CMOS)</text>
+          <text x="315" y="104" fill="#4ade80" font-size="7" font-family="JetBrains Mono" text-anchor="middle">routes 100 DACs</text>
+          <text x="315" y="117" fill="#4ade80" font-size="7" font-family="JetBrains Mono" text-anchor="middle">→ N×10 electrodes</text>
+          <text x="315" y="130" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">same-type parallelism</text>
+
+          <!-- DEMUX NETWORK -->
+          <rect x="255" y="160" width="120" height="70" rx="4" fill="rgba(96,165,250,0.05)" stroke="#60a5fa" stroke-width="1"/>
+          <text x="315" y="178" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" text-anchor="middle">Demux Network</text>
+          <text x="315" y="191" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">(sample &amp; hold)</text>
+          <text x="315" y="204" fill="#60a5fa" font-size="7" font-family="JetBrains Mono" text-anchor="middle">cap holds voltage</text>
+          <text x="315" y="217" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">while MUX off</text>
+
+          <!-- ON-CHIP CAPS -->
+          <rect x="255" y="250" width="120" height="50" rx="4" fill="rgba(248,172,255,0.05)" stroke="#f8acff" stroke-width="0.8"/>
+          <text x="315" y="270" fill="#f8acff" font-size="8" font-family="JetBrains Mono" text-anchor="middle">On-chip Capacitors</text>
+          <text x="315" y="283" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">RF shunt + voltage hold</text>
+          <text x="315" y="296" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">noise shielding</text>
+
+          <!-- QCCD ION TRAP ZONES -->
+          <!-- Gate Zone A -->
+          <rect x="400" y="65" width="140" height="115" rx="4" fill="rgba(74,222,128,0.05)" stroke="#4ade80" stroke-width="1" stroke-dasharray="4,2"/>
+          <text x="470" y="82" fill="#4ade80" font-size="8" font-family="JetBrains Mono" text-anchor="middle">GATE ZONE A</text>
+          <!-- Dynamic electrodes -->
+          <rect x="410" y="90" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="436" y="90" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="462" y="90" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="488" y="90" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="514" y="90" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <!-- Shim electrodes -->
+          <rect x="410" y="108" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="436" y="108" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="462" y="108" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="488" y="108" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="514" y="108" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <!-- Ion in gate zone A -->
+          <circle cx="435" cy="140" r="8" fill="#c3f5ff" filter="url(#glow)" id="wiseIonA"/>
+          <text x="435" y="162" fill="#c3f5ff" font-size="8" font-family="Space Grotesk" text-anchor="middle">Q₀</text>
+          <circle cx="483" cy="140" r="8" fill="#c3f5ff" filter="url(#glow)" id="wiseIonB"/>
+          <text x="483" y="162" fill="#c3f5ff" font-size="8" font-family="Space Grotesk" text-anchor="middle">Q₁</text>
+          <!-- Ion rail -->
+          <line x1="410" y1="140" x2="535" y2="140" stroke="#c3f5ff" stroke-width="0.8" opacity="0.2"/>
+          <text x="470" y="175" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">laser addressing</text>
+
+          <!-- Gate Zone B -->
+          <rect x="400" y="200" width="140" height="110" rx="4" fill="rgba(74,222,128,0.05)" stroke="#4ade80" stroke-width="1" stroke-dasharray="4,2"/>
+          <text x="470" y="217" fill="#4ade80" font-size="8" font-family="JetBrains Mono" text-anchor="middle">GATE ZONE B</text>
+          <rect x="410" y="225" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="436" y="225" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="462" y="225" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="488" y="225" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="514" y="225" width="22" height="14" rx="2" fill="rgba(74,222,128,0.2)" stroke="#4ade80" stroke-width="0.8"/>
+          <rect x="410" y="243" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="436" y="243" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="462" y="243" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="488" y="243" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <rect x="514" y="243" width="22" height="10" rx="2" fill="rgba(96,165,250,0.2)" stroke="#60a5fa" stroke-width="0.8"/>
+          <circle cx="450" cy="280" r="8" fill="#c3f5ff" filter="url(#glow)"/>
+          <text x="450" y="300" fill="#c3f5ff" font-size="8" font-family="Space Grotesk" text-anchor="middle">Q₂ (ancilla)</text>
+          <line x1="410" y1="280" x2="535" y2="280" stroke="#c3f5ff" stroke-width="0.8" opacity="0.2"/>
+
+          <!-- Readout Zone -->
+          <rect x="400" y="330" width="140" height="90" rx="4" fill="rgba(96,165,250,0.05)" stroke="#60a5fa" stroke-width="1" stroke-dasharray="4,2"/>
+          <text x="470" y="348" fill="#60a5fa" font-size="8" font-family="JetBrains Mono" text-anchor="middle">READOUT ZONE</text>
+          <text x="470" y="362" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">PMT / CCD detection</text>
+          <text x="470" y="376" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">fluorescence at 370nm</text>
+          <circle cx="470" cy="400" r="7" fill="#f8acff" opacity="0.6"/>
+          <text x="470" y="420" fill="#60a5fa" font-size="7" font-family="JetBrains Mono" text-anchor="middle">→ classical bits</text>
+
+          <!-- Junction indicator -->
+          <rect x="550" y="160" width="70" height="255" rx="4" fill="rgba(248,172,255,0.04)" stroke="#f8acff" stroke-width="0.8" stroke-dasharray="3,2"/>
+          <text x="585" y="178" fill="#f8acff" font-size="7" font-family="JetBrains Mono" text-anchor="middle">JUNCTION</text>
+          <text x="585" y="191" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">ion routing</text>
+          <text x="585" y="204" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">&amp; splitting</text>
+          <!-- Transport arrow in junction -->
+          <line x1="585" y1="220" x2="585" y2="370" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrowG)" opacity="0.7"/>
+          <text x="596" y="300" fill="#4ade80" font-size="7" font-family="JetBrains Mono" transform="rotate(90,596,300)">SHUTTLE</text>
+
+          <!-- Connection lines from switch to gate zones -->
+          <line x1="375" y1="95" x2="400" y2="95" stroke="#4ade80" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arrowG)"/>
+          <line x1="375" y1="115" x2="400" y2="240" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arrowB)"/>
+          <line x1="375" y1="230" x2="400" y2="230" stroke="#4ade80" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arrowG)"/>
+          <line x1="375" y1="180" x2="400" y2="350" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#arrowB)"/>
+
+          <!-- Sample & Hold annotation -->
+          <g opacity="0.7">
+            <rect x="258" y="320" width="110" height="55" rx="3" fill="rgba(195,245,255,0.04)" stroke="#849396" stroke-width="0.5"/>
+            <text x="313" y="338" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">SAMPLE &amp; HOLD MODE</text>
+            <text x="313" y="350" fill="#c3f5ff" font-size="7" font-family="JetBrains Mono" text-anchor="middle">1. Charge all electrodes</text>
+            <text x="313" y="362" fill="#c3f5ff" font-size="7" font-family="JetBrains Mono" text-anchor="middle">2. Disconnect MUX</text>
+            <text x="313" y="374" fill="#4ade80" font-size="7" font-family="JetBrains Mono" text-anchor="middle">3. Gate operations (noise-free)</text>
+          </g>
+
+          <!-- Speed annotation -->
+          <g opacity="0.7">
+            <rect x="258" y="385" width="110" height="40" rx="3" fill="rgba(195,245,255,0.04)" stroke="#849396" stroke-width="0.5"/>
+            <text x="313" y="403" fill="#849396" font-size="7" font-family="JetBrains Mono" text-anchor="middle">Gate speed: 40–2600</text>
+            <text x="313" y="415" fill="#fbbf24" font-size="7" font-family="JetBrains Mono" text-anchor="middle">layers/sec on 1000 qubits</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- WISE vs Standard Comparison Table -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+      <div class="glass-panel rounded-xl p-5">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-4">I/O Scaling: Standard vs WISE</h3>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-xs mb-1.5"><span class="text-on-surface-variant">Standard (100 qubits)</span><span class="text-[#ffb4ab] mono">1,000 lines</span></div>
+            <div class="h-2 bg-surface-container-highest rounded-full overflow-hidden"><div class="compare-bar h-full bg-[#ffb4ab]/70 rounded-full" style="width:10%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1.5"><span class="text-on-surface-variant">Standard (1,000 qubits)</span><span class="text-[#ffb4ab] mono">10,000 lines ⚠ IMPOSSIBLE</span></div>
+            <div class="h-2 bg-surface-container-highest rounded-full overflow-hidden"><div class="compare-bar h-full bg-[#ffb4ab] rounded-full" style="width:100%"></div></div>
+          </div>
+          <div class="border-t border-outline-variant/20 pt-3">
+            <div class="flex justify-between text-xs mb-1.5"><span class="text-on-surface-variant">WISE (100 qubits)</span><span class="text-[#4ade80] mono">~50 lines</span></div>
+            <div class="h-2 bg-surface-container-highest rounded-full overflow-hidden"><div class="compare-bar h-full bg-[#4ade80]/70 rounded-full" style="width:0.5%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1.5"><span class="text-on-surface-variant">WISE (1,000 qubits)</span><span class="text-[#4ade80] mono">~200 lines ✓ ACHIEVABLE</span></div>
+            <div class="h-2 bg-surface-container-highest rounded-full overflow-hidden"><div class="compare-bar h-full bg-[#4ade80] rounded-full" style="width:2%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-panel rounded-xl p-5">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-4">Impact on Quantum Addition</h3>
+        <div class="space-y-3">
+          <div class="p-3 rounded bg-surface-container-lowest/60 border-l-2 border-[#ffb4ab]">
+            <span class="text-[9px] uppercase tracking-widest text-[#ffb4ab]">Without WISE (Ripple-Carry)</span>
+            <p class="text-xs text-on-surface-variant mt-1 leading-relaxed">Each carry qubit needs dedicated electrode DAC. Sequential gates require sequential DAC switching — adds latency beyond T₂ coherence time. Carry chain <strong class="text-[#ffb4ab]">decoheres</strong> before completion.</p>
+          </div>
+          <div class="p-3 rounded bg-surface-container-lowest/60 border-l-2 border-[#4ade80]">
+            <span class="text-[9px] uppercase tracking-widest text-[#4ade80]">With WISE (Transport-Assisted Gates)</span>
+            <p class="text-xs text-on-surface-variant mt-1 leading-relaxed">Ions shuttled to shared gate zones. Only ~100 dynamic DACs needed regardless of chain length. Sample-and-hold eliminates switching noise during gates. Carry propagation <strong class="text-[#4ade80]">stays coherent</strong>.</p>
+          </div>
+          <div class="p-3 rounded bg-surface-container-lowest/60 border-l-2 border-primary">
+            <span class="text-[9px] uppercase tracking-widest text-primary">WISE Gate Speed</span>
+            <p class="text-xs text-on-surface-variant mt-1 leading-relaxed">40–2600 gate layers/second achievable on 1000-qubit device. Adder circuits that previously failed due to depth limits now execute within coherence window.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QCCD Zone Simulation -->
+    <div class="glass-panel rounded-xl p-5">
+      <h3 class="text-sm font-bold uppercase tracking-widest mb-2">QCCD Operation Simulator</h3>
+      <p class="text-xs text-on-surface-variant mb-4">Click a zone to see what happens during WISE-optimized quantum addition. Ions are shuttled to gate zones — no direct wiring needed for each operation.</p>
+      <div class="flex gap-2 flex-wrap mb-4" id="qccdZoneTabs">
+        <button class="zone-tab active-zone text-[10px] border border-current px-3 py-1.5 rounded uppercase tracking-wider" onclick="showQCCDZone('prep')">State Prep</button>
+        <button class="zone-tab text-[10px] border border-outline-variant/40 text-outline px-3 py-1.5 rounded uppercase tracking-wider" onclick="showQCCDZone('shuttle')">Ion Shuttle</button>
+        <button class="zone-tab text-[10px] border border-outline-variant/40 text-outline px-3 py-1.5 rounded uppercase tracking-wider" onclick="showQCCDZone('gate_a')">Gate Zone A</button>
+        <button class="zone-tab text-[10px] border border-outline-variant/40 text-outline px-3 py-1.5 rounded uppercase tracking-wider" onclick="showQCCDZone('gate_b')">Gate Zone B</button>
+        <button class="zone-tab text-[10px] border border-outline-variant/40 text-outline px-3 py-1.5 rounded uppercase tracking-wider" onclick="showQCCDZone('readout')">Readout</button>
+      </div>
+      <div id="qccdZoneContent" class="p-4 rounded bg-surface-container-lowest/60 border border-outline-variant/20">
+        <div class="flex items-start gap-4">
+          <div id="qccdZoneIcon" class="text-3xl">❄️</div>
+          <div>
+            <h4 id="qccdZoneTitle" class="text-sm font-bold text-primary mb-1">State Preparation</h4>
+            <p id="qccdZoneDesc" class="text-xs text-on-surface-variant leading-relaxed">Ions are Doppler-cooled and sideband-cooled to the motional ground state n̄ ≈ 0.04. The WISE switch network pre-charges all shim electrodes before cooling begins, then disconnects — the sample-and-hold capacitors maintain electrode potentials throughout the cooling sequence without any switching noise.</p>
+            <div id="qccdZoneTech" class="mt-2 flex gap-2 flex-wrap">
+              <span class="text-[9px] px-2 py-0.5 bg-surface-container-highest text-primary rounded mono">T_cool ~ 2ms</span>
+              <span class="text-[9px] px-2 py-0.5 bg-surface-container-highest text-[#60a5fa] rounded mono">Shim DACs: pre-charged</span>
+              <span class="text-[9px] px-2 py-0.5 bg-surface-container-highest text-[#4ade80] rounded mono">Switch: OPEN (no noise)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════ PAGE: LIBRARY ═══ -->
+<div id="page-library" class="page pt-16 pb-16">
+  <main class="px-4 py-6 max-w-7xl mx-auto">
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="w-6 h-[1px] bg-primary"></span>
+        <span class="text-primary text-xs tracking-[0.2em] uppercase">Algorithm Reference</span>
+      </div>
+      <h2 class="text-3xl font-bold tracking-tight mb-1">Gate Library</h2>
+      <p class="text-on-surface-variant text-sm">Quantum gate operations used in trapped-ion arithmetic, from primitive gates to full adder circuits — with WISE implementation notes.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- MS Gate -->
+      <div class="glass-panel p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xl font-bold text-primary mono">MS</span>
+          <span class="text-[9px] uppercase tracking-widest text-outline border border-outline-variant/30 px-2 py-0.5 rounded">Mølmer-Sørensen</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed mb-3">Native 2-qubit entangling gate for Yb-171 ions. Bichromatic laser drives red+blue sidebands simultaneously via shared COM phonon mode. Creates maximally entangled Bell state.</p>
+        <div class="space-y-1.5 text-[10px] mono">
+          <div class="flex justify-between"><span class="text-outline">Gate time</span><span class="text-primary">~100–500 μs</span></div>
+          <div class="flex justify-between"><span class="text-outline">Fidelity</span><span class="text-primary">99.1–99.5%</span></div>
+          <div class="flex justify-between"><span class="text-outline">Operation</span><span class="text-primary">e^(-iπ/4·XX)</span></div>
+          <div class="flex justify-between"><span class="text-outline">WISE</span><span class="text-[#4ade80]">transport-assisted</span></div>
+        </div>
+        <div class="mt-3 p-2 rounded bg-surface-container-lowest/60 text-[10px] text-outline mono">MS|00⟩ → (|00⟩ - i|11⟩)/√2</div>
+      </div>
+
+      <!-- CNOT (via MS) -->
+      <div class="glass-panel p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xl font-bold text-primary mono">CNOT</span>
+          <span class="text-[9px] uppercase tracking-widest text-outline border border-outline-variant/30 px-2 py-0.5 rounded">Controlled-NOT</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed mb-3">Compiled from MS + single-qubit Rz gates. Implements XOR in quantum adder: Sum bit computation. Connectivity constrained by ion chain adjacency — WISE removes this limit via shuttling.</p>
+        <div class="space-y-1.5 text-[10px] mono">
+          <div class="flex justify-between"><span class="text-outline">Gate time</span><span class="text-primary">~200 μs</span></div>
+          <div class="flex justify-between"><span class="text-outline">Fidelity</span><span class="text-primary">99.3%</span></div>
+          <div class="flex justify-between"><span class="text-outline">Connectivity</span><span class="text-[#ffb4ab]">adjacent ions only</span></div>
+          <div class="flex justify-between"><span class="text-outline">WISE fix</span><span class="text-[#4ade80]">shuttle non-adjacent</span></div>
+        </div>
+        <div class="mt-3 p-2 rounded bg-surface-container-lowest/60 text-[10px] text-outline mono">|00⟩→|00⟩ |10⟩→|11⟩</div>
+      </div>
+
+      <!-- Toffoli -->
+      <div class="glass-panel p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xl font-bold text-primary mono">CCX</span>
+          <span class="text-[9px] uppercase tracking-widest text-outline border border-outline-variant/30 px-2 py-0.5 rounded">Toffoli / AND</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed mb-3">3-qubit gate for carry computation (AND logic). Requires 5–6 2-qubit gates when decomposed. Primary decoherence bottleneck in ripple-carry chains — WISE mitigates via parallel zone execution.</p>
+        <div class="space-y-1.5 text-[10px] mono">
+          <div class="flex justify-between"><span class="text-outline">Gate depth</span><span class="text-[#ffb4ab]">5–6 2Q gates</span></div>
+          <div class="flex justify-between"><span class="text-outline">Fidelity</span><span class="text-[#ffb4ab]">~94–97%</span></div>
+          <div class="flex justify-between"><span class="text-outline">T₂ budget</span><span class="text-[#ffb4ab]">~2–3ms used</span></div>
+          <div class="flex justify-between"><span class="text-outline">WISE</span><span class="text-[#4ade80]">zone-parallel exec</span></div>
+        </div>
+        <div class="mt-3 p-2 rounded bg-surface-container-lowest/60 text-[10px] text-outline mono">|110⟩→|111⟩ (AND gate)</div>
+      </div>
+
+      <!-- H Gate -->
+      <div class="glass-panel p-5 rounded-xl">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xl font-bold text-primary mono">H</span>
+          <span class="text-[9px] uppercase tracking-widest text-outline border border-outline-variant/30 px-2 py-0.5 rounded">Hadamard</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed mb-3">Single-qubit superposition gate. Creates |+⟩ = (|0⟩+|1⟩)/√2. Used in MS gate preparation and error mitigation sequences. Implemented with 729nm optical qubit rotation.</p>
+        <div class="space-y-1.5 text-[10px] mono">
+          <div class="flex justify-between"><span class="text-outline">Gate time</span><span class="text-primary">~10 μs</span></div>
+          <div class="flex justify-between"><span class="text-outline">Fidelity</span><span class="text-primary">99.8%</span></div>
+          <div class="flex justify-between"><span class="text-outline">Laser</span><span class="text-primary">729nm π/2 pulse</span></div>
+        </div>
+        <div class="mt-3 p-2 rounded bg-surface-container-lowest/60 text-[10px] text-outline mono">H|0⟩ = |+⟩, H|1⟩ = |−⟩</div>
+      </div>
+
+      <!-- Rydberg Dressing -->
+      <div class="glass-panel p-5 rounded-xl border border-[#f8acff]/15">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xl font-bold text-secondary mono">Ryd</span>
+          <span class="text-[9px] uppercase tracking-widest text-secondary/70 border border-secondary/20 px-2 py-0.5 rounded">Rydberg Dressing</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed mb-3">Off-resonant Rydberg coupling creates entanglement via dipolar exchange interaction. The "dressing" field grows the effective interaction radius — visualized as expanding color-coded field circles that overlap between ions.</p>
+        <div class="space-y-1.5 text-[10px] mono">
+          <div class="flex justify-between"><span class="text-outline">Interaction</span><span class="text-secondary">Dipolar exchange</span></div>
+          <div class="flex justify-between"><span class="text-outline">Range</span><span class="text-secondary">scales with dress Ω</span></div>
+          <div class="flex justify-between"><span class="text-outline">Blockade</span><span class="text-secondary">Rydberg blockade</span></div>
+          <div class="flex justify-between"><span class="text-outline">Visual</span><span class="text-secondary">expanding ring</span></div>
+        </div>
+        <div class="mt-3 p-2 rounded bg-surface-container-lowest/60 text-[10px] mono text-secondary">Field overlap = entanglement active</div>
+      </div>
+
+      <!-- Ripple-Carry Failure -->
+      <div class="glass-panel p-5 rounded-xl border border-[#ffb4ab]/20">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xl font-bold text-error mono">RC</span>
+          <span class="text-[9px] uppercase tracking-widest text-error/70 border border-error/20 px-2 py-0.5 rounded">Ripple-Carry</span>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed mb-3">Classical-style carry propagation translated to quantum. Each carry qubit needs sequential 2Q gates — depth scales linearly with n. This is where NISQ devices fail: T₂ coherence exceeded before computation finishes.</p>
+        <div class="space-y-1.5 text-[10px] mono">
+          <div class="flex justify-between"><span class="text-outline">Gate count</span><span class="text-error">O(n) 2Q gates</span></div>
+          <div class="flex justify-between"><span class="text-outline">Depth</span><span class="text-error">4n+1 gates</span></div>
+          <div class="flex justify-between"><span class="text-outline">T₂ limit</span><span class="text-error">fails at n≥3</span></div>
+          <div class="flex justify-between"><span class="text-outline">WISE fix</span><span class="text-[#4ade80]">parallel zones</span></div>
+        </div>
+        <div class="mt-3 p-2 rounded bg-[#ffb4ab]/5 border border-[#ffb4ab]/15 text-[10px] text-error mono">T₂ ≈ 4.2ms | gate stack ≈ 5ms → FAIL</div>
+      </div>
+    </div>
+
+    <!-- Algorithm Comparison -->
+    <div class="mt-6 glass-panel rounded-xl p-5">
+      <h3 class="text-sm font-bold uppercase tracking-widest mb-4">Algorithm Fidelity Landscape</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-outline-variant/30">
+              <th class="text-left pb-2 text-outline uppercase tracking-widest font-medium pr-4">Algorithm</th>
+              <th class="text-left pb-2 text-outline uppercase tracking-widest font-medium pr-4">Gate Count</th>
+              <th class="text-left pb-2 text-outline uppercase tracking-widest font-medium pr-4">Depth</th>
+              <th class="text-left pb-2 text-outline uppercase tracking-widest font-medium pr-4">Fidelity</th>
+              <th class="text-left pb-2 text-outline uppercase tracking-widest font-medium pr-4">WISE Benefit</th>
+              <th class="text-left pb-2 text-outline uppercase tracking-widest font-medium">DAC Lines Needed</th>
+            </tr>
+          </thead>
+          <tbody class="space-y-2">
+            <tr class="border-b border-outline-variant/10">
+              <td class="py-2 pr-4 font-bold text-primary mono">Half Adder</td>
+              <td class="py-2 pr-4 text-on-surface-variant mono">2 (CNOT + Toffoli)</td>
+              <td class="py-2 pr-4 text-on-surface-variant mono">2</td>
+              <td class="py-2 pr-4 text-primary mono">99.2%</td>
+              <td class="py-2 pr-4 text-on-surface-variant">Minimal — local gates</td>
+              <td class="py-2 text-primary mono">~20</td>
+            </tr>
+            <tr class="border-b border-outline-variant/10">
+              <td class="py-2 pr-4 font-bold text-primary mono">Full Adder</td>
+              <td class="py-2 pr-4 text-on-surface-variant mono">5 (MS + Z gates)</td>
+              <td class="py-2 pr-4 text-on-surface-variant mono">4</td>
+              <td class="py-2 pr-4 text-primary mono">97.1%</td>
+              <td class="py-2 pr-4 text-on-surface-variant">Moderate — zone routing</td>
+              <td class="py-2 text-primary mono">~30</td>
+            </tr>
+            <tr class="border-b border-outline-variant/10">
+              <td class="py-2 pr-4 font-bold text-error mono">Ripple-Carry</td>
+              <td class="py-2 pr-4 text-on-surface-variant mono">5+ sequential</td>
+              <td class="py-2 pr-4 text-error mono">5+ (T₂ exceeded)</td>
+              <td class="py-2 pr-4 text-error mono">72.3% ⚠</td>
+              <td class="py-2 pr-4 text-[#4ade80]">Critical — enables at all</td>
+              <td class="py-2 text-error mono">10,000+ (standard)</td>
+            </tr>
+            <tr>
+              <td class="py-2 pr-4 font-bold text-[#4ade80] mono">WISE-Optimized</td>
+              <td class="py-2 pr-4 text-on-surface-variant mono">5 (parallelized)</td>
+              <td class="py-2 pr-4 text-[#4ade80] mono">3 (zone-parallel)</td>
+              <td class="py-2 pr-4 text-[#4ade80] mono">98.4% ✓</td>
+              <td class="py-2 pr-4 text-[#4ade80]">Transforms ripple-carry</td>
+              <td class="py-2 text-[#4ade80] mono">~200</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════ PAGE: GATE BUILDER ═══ -->
+<div id="page-gate" class="page pt-16 pb-16 flex flex-col">
+  <main class="px-4 py-6 max-w-7xl mx-auto flex-1 w-full">
+    <div class="mb-5">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="w-6 h-[1px] bg-primary"></span>
+        <span class="text-primary text-xs tracking-[0.2em] uppercase">Drag &amp; Drop Builder</span>
+      </div>
+      <h2 class="text-3xl font-bold tracking-tight mb-1">Gate Builder</h2>
+      <p class="text-on-surface-variant text-sm">Compose custom quantum circuits and evaluate fidelity. WISE-aware compiler estimates DAC requirements and flags coherence violations.</p>
+    </div>
+    <div class="flex flex-col lg:flex-row gap-5">
+      <!-- Palette -->
+      <aside class="w-full lg:w-56 shrink-0">
+        <div class="glass-panel p-4 rounded-xl mb-4">
+          <span class="text-[9px] uppercase tracking-widest text-outline block mb-3">Single-Qubit Gates</span>
+          <div class="flex flex-wrap gap-2">
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-primary/30 text-primary text-xs font-bold" draggable="true" data-gate="H" data-color="primary" ondragstart="dragStart(event)">H</div>
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-primary/30 text-primary text-xs font-bold" draggable="true" data-gate="X" data-color="primary" ondragstart="dragStart(event)">X</div>
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-primary/30 text-primary text-xs font-bold" draggable="true" data-gate="Z" data-color="primary" ondragstart="dragStart(event)">Z</div>
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-primary/30 text-primary text-xs font-bold" draggable="true" data-gate="Rz" data-color="primary" ondragstart="dragStart(event)">Rz</div>
+          </div>
+        </div>
+        <div class="glass-panel p-4 rounded-xl mb-4">
+          <span class="text-[9px] uppercase tracking-widest text-outline block mb-3">Two-Qubit Gates</span>
+          <div class="flex flex-wrap gap-2">
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-secondary/30 text-secondary text-xs font-bold" draggable="true" data-gate="MS" data-color="secondary" ondragstart="dragStart(event)">MS</div>
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-secondary/30 text-secondary text-xs font-bold" draggable="true" data-gate="CNOT" data-color="secondary" ondragstart="dragStart(event)">CNOT</div>
+          </div>
+        </div>
+        <div class="glass-panel p-4 rounded-xl mb-4">
+          <span class="text-[9px] uppercase tracking-widest text-outline block mb-3">Operations</span>
+          <div class="flex flex-wrap gap-2">
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-[#4ade80]/30 text-[#4ade80] text-xs font-bold" draggable="true" data-gate="T" data-color="wise" ondragstart="dragStart(event)">T</div>
+            <div class="gate-chip px-3 py-2 bg-surface-container-highest rounded border border-outline/30 text-outline text-xs font-bold" draggable="true" data-gate="M" data-color="outline" ondragstart="dragStart(event)">M</div>
+          </div>
+        </div>
+        <div class="glass-panel p-4 rounded-xl">
+          <span class="text-[9px] uppercase tracking-widest text-outline block mb-2">Circuit Stats</span>
+          <div class="space-y-1.5 text-[10px] mono">
+            <div class="flex justify-between"><span class="text-outline">Depth</span><span id="circuitDepth" class="text-primary">0 gates</span></div>
+            <div class="flex justify-between"><span class="text-outline">Fidelity</span><span id="circuitFidelity" class="text-primary">—</span></div>
+            <div class="flex justify-between"><span class="text-outline">Est. DAC lines</span><span id="circuitDAClines" class="text-[#fbbf24]">—</span></div>
+            <div class="flex justify-between"><span class="text-outline">WISE needed</span><span id="circuitWISEneed" class="text-[#4ade80]">—</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Circuit Grid + State vector -->
+      <div class="flex-1 flex flex-col gap-4">
+        <div class="glass-panel rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] uppercase tracking-widest text-outline font-bold">Circuit Grid — 3 Qubits × 8 Time Steps</span>
+            <span id="buildFidVal" class="text-xs mono text-primary">Fidelity: —</span>
+          </div>
+          <!-- Qubit row labels + grid -->
+          <div class="flex gap-2 items-start">
+            <div class="flex flex-col gap-1 pt-2">
+              <div class="h-[72px] flex items-center"><span class="text-[10px] text-on-surface-variant mono w-6">Q₀</span></div>
+              <div class="h-[72px] flex items-center"><span class="text-[10px] text-on-surface-variant mono w-6">Q₁</span></div>
+              <div class="h-[72px] flex items-center"><span class="text-[10px] text-on-surface-variant mono w-6">Q₂</span></div>
+            </div>
+            <div id="circuitGrid" class="grid gap-1 flex-1" style="grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(3, 72px);">
+            </div>
+          </div>
+          <div id="builderWarning" style="display:none" class="mt-3 p-3 rounded border border-[#ffb4ab]/20 bg-[#ffb4ab]/5">
+            <div class="flex items-center gap-2 mb-1 text-error"><span class="material-symbols-outlined text-sm">warning</span><span class="text-[9px] font-bold uppercase tracking-widest">WISE Compiler Warning</span></div>
+            <p id="builderWarningText" class="text-[10px] text-on-surface-variant leading-relaxed"></p>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button onclick="clearCircuit()" class="text-xs text-outline border border-outline-variant/30 px-3 py-1.5 rounded hover:text-on-surface transition-colors">Clear</button>
+            <button onclick="runBuilderCircuit()" class="text-xs text-primary border border-primary/30 px-3 py-1.5 rounded hover:bg-primary/10 transition-colors">Run on Trap →</button>
+          </div>
+        </div>
+
+        <!-- State Vector + WISE info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="glass-panel p-4 rounded-xl">
+            <h3 class="text-[10px] uppercase tracking-widest text-outline mb-3 font-bold">State Vector</h3>
+            <div id="builderStateVector" class="space-y-2">
+              <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|00⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-primary rounded-full" style="width:100%"></div></div><span class="text-[10px] font-bold text-primary min-w-[28px] mono">1.00</span></div></div>
+              <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|01⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-primary rounded-full" style="width:0%"></div></div><span class="text-[10px] font-bold text-on-surface-variant min-w-[28px] mono">0.00</span></div></div>
+              <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|10⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-primary rounded-full" style="width:0%"></div></div><span class="text-[10px] font-bold text-on-surface-variant min-w-[28px] mono">0.00</span></div></div>
+              <div class="sv-row"><div class="text-[10px] text-on-surface-variant mb-1 mono">|11⟩</div><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bar-fill h-full bg-secondary rounded-full" style="width:0%"></div></div><span class="text-[10px] font-bold text-on-surface-variant min-w-[28px] mono">0.00</span></div></div>
+            </div>
+          </div>
+          <div class="glass-panel p-4 rounded-xl">
+            <h3 class="text-[10px] uppercase tracking-widest text-outline mb-3 font-bold">WISE Compiler Output</h3>
+            <div id="wiseCompilerOutput" class="space-y-2 text-[10px] text-on-surface-variant mono leading-relaxed">
+              <p class="text-outline">Add gates to see WISE compilation analysis.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════ PAGE: RESULTS ═══ -->
+<div id="page-results" class="page pt-16 pb-16">
+  <main class="pt-8 pb-8 px-6 max-w-7xl mx-auto">
+    <div class="mb-8">
+      <div class="flex items-center gap-2 mb-1"><span class="w-8 h-[1px] bg-primary"></span><span class="text-primary text-sm tracking-[0.2em] uppercase">Measurement Output</span></div>
+      <h2 class="text-4xl font-bold tracking-tight mb-3">Results</h2>
+      <p class="text-on-surface-variant max-w-2xl leading-relaxed">Quantum measurement outcomes, noise analysis, and WISE architecture impact on algorithm fidelity.</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] text-outline uppercase tracking-widest block mb-1">Last Sum</span>
+        <span id="resSumBig" class="text-4xl font-bold text-primary mono">—</span>
+        <span class="text-xs text-on-surface-variant block mt-1">XOR output</span>
+      </div>
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] text-outline uppercase tracking-widest block mb-1">Carry Out</span>
+        <span id="resCarryBig" class="text-4xl font-bold text-secondary mono">—</span>
+        <span class="text-xs text-on-surface-variant block mt-1">AND output</span>
+      </div>
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] text-outline uppercase tracking-widest block mb-1">Gate Fidelity</span>
+        <span id="resFidelity" class="text-3xl font-bold text-primary mono">—</span>
+        <span class="text-xs text-on-surface-variant block mt-1">Circuit avg</span>
+      </div>
+      <div class="glass-panel p-4 rounded-xl">
+        <span class="text-[10px] text-outline uppercase tracking-widest block mb-1">Algorithm</span>
+        <span id="resAlgo" class="text-base font-bold text-on-surface mt-2 block">—</span>
+        <span id="resWiseStatus" class="text-[10px] text-on-surface-variant block mt-1">—</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+      <!-- Probability distribution -->
+      <div class="md:col-span-5 glass-panel p-5 rounded-xl">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-5">Measurement Distribution</h3>
+        <div class="space-y-4">
+          <div class="flex items-center gap-4"><span class="text-[10px] font-mono text-on-surface-variant w-10 mono">|00⟩</span><div class="flex-1 h-3 bg-surface-container-highest rounded-full overflow-hidden"><div id="prob00" class="h-full bg-primary rounded-full bar-fill" style="width:100%"></div></div><span id="prob00v" class="text-xs font-bold text-primary w-10 text-right mono">1.00</span></div>
+          <div class="flex items-center gap-4"><span class="text-[10px] font-mono text-on-surface-variant w-10 mono">|01⟩</span><div class="flex-1 h-3 bg-surface-container-highest rounded-full overflow-hidden"><div id="prob01" class="h-full bg-primary rounded-full bar-fill" style="width:0%"></div></div><span id="prob01v" class="text-xs font-bold text-on-surface-variant w-10 text-right mono">0.00</span></div>
+          <div class="flex items-center gap-4"><span class="text-[10px] font-mono text-on-surface-variant w-10 mono">|10⟩</span><div class="flex-1 h-3 bg-surface-container-highest rounded-full overflow-hidden"><div id="prob10" class="h-full bg-primary rounded-full bar-fill" style="width:0%"></div></div><span id="prob10v" class="text-xs font-bold text-on-surface-variant w-10 text-right mono">0.00</span></div>
+          <div class="flex items-center gap-4"><span class="text-[10px] font-mono text-on-surface-variant w-10 mono">|11⟩</span><div class="flex-1 h-3 bg-surface-container-highest rounded-full overflow-hidden"><div id="prob11" class="h-full bg-secondary rounded-full bar-fill" style="width:0%"></div></div><span id="prob11v" class="text-xs font-bold text-secondary w-10 text-right mono">0.00</span></div>
+        </div>
+        <!-- WISE fidelity context -->
+        <div id="wiseFidelityNote" class="mt-5 p-3 rounded bg-surface-container-lowest/60 text-[10px] text-on-surface-variant leading-relaxed" style="display:none">
+          <span class="text-[#4ade80] font-bold">WISE note: </span><span id="wiseFidelityText"></span>
+        </div>
+      </div>
+
+      <!-- Noise analysis -->
+      <div class="md:col-span-7 glass-panel p-5 rounded-xl">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-5">Noise &amp; Decoherence Analysis</h3>
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Gate Errors</span><span id="noiseGate" class="text-primary mono">—</span></div>
+            <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div id="noiseGateBar" class="h-full bg-primary bar-fill rounded-full" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Readout Errors</span><span id="noiseReadout" class="text-secondary mono">—</span></div>
+            <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div id="noiseReadoutBar" class="h-full bg-secondary bar-fill rounded-full" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Crosstalk (electrode coupling)</span><span id="noiseCross" class="text-error mono">—</span></div>
+            <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div id="noiseCrossBar" class="h-full bg-error bar-fill rounded-full" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">T₂ Decoherence</span><span id="noiseT2" class="text-on-surface-variant mono">—</span></div>
+            <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div id="noiseT2Bar" class="h-full bg-outline-variant bar-fill rounded-full" style="width:0%"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-xs mb-1"><span class="text-[#fbbf24]">MUX switching noise (WISE)</span><span id="noiseMUX" class="text-[#fbbf24] mono">—</span></div>
+            <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div id="noiseMUXBar" class="h-full bg-[#fbbf24] bar-fill rounded-full" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <div class="mt-5 pt-4 border-t border-outline-variant/20">
+          <h4 class="text-[10px] uppercase tracking-widest text-outline mb-3">Algorithm Performance Comparison</h4>
+          <div class="space-y-2">
+            <div class="flex items-center gap-3"><span class="text-[10px] text-on-surface-variant w-32 mono">WISE-Optimized</span><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-[#4ade80] rounded-full" style="width:98.4%"></div></div><span class="text-[10px] text-[#4ade80] w-12 text-right mono">98.4%</span></div>
+            <div class="flex items-center gap-3"><span class="text-[10px] text-on-surface-variant w-32 mono">Half Adder</span><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:99.2%"></div></div><span class="text-[10px] text-primary w-12 text-right mono">99.2%</span></div>
+            <div class="flex items-center gap-3"><span class="text-[10px] text-on-surface-variant w-32 mono">Full Adder</span><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:97.1%"></div></div><span class="text-[10px] text-primary w-12 text-right mono">97.1%</span></div>
+            <div class="flex items-center gap-3"><span class="text-[10px] text-on-surface-variant w-32 mono">Ripple-Carry</span><div class="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="h-full bg-error rounded-full" style="width:72.3%"></div></div><span class="text-[10px] text-error w-12 text-right mono">72.3%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WISE vs Standard DAC comparison -->
+      <div class="md:col-span-6 glass-panel p-5 rounded-xl">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-4">WISE I/O Reduction Impact</h3>
+        <div class="space-y-3 text-xs">
+          <div class="flex items-center gap-3 p-3 rounded bg-surface-container-lowest/60">
+            <span class="material-symbols-outlined text-[#ffb4ab] text-lg">cable</span>
+            <div><span class="font-bold text-on-surface block">Standard wiring (this adder)</span><span class="text-on-surface-variant">Requires dedicated DAC per electrode segment. Crosstalk between carry qubit electrodes causes <span class="text-error">cascading noise</span> during sequential CNOT chain.</span></div>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded bg-surface-container-lowest/60">
+            <span class="material-symbols-outlined text-[#4ade80] text-lg">hub</span>
+            <div><span class="font-bold text-on-surface block">WISE architecture (this adder)</span><span class="text-on-surface-variant">~100 DACs shared via switch network. Sample-and-hold capacitors maintain electrode voltages during sensitive gate operations — <span class="text-[#4ade80]">switching noise eliminated</span>. Ions shuttled to gate zones instead of routing signals.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Failure mode -->
+      <div id="failureExplainer" class="md:col-span-6 glass-panel p-5 rounded-xl border border-error/20 bg-error/3" style="display:none">
+        <div class="flex items-start gap-4">
+          <span class="material-symbols-outlined text-error mt-0.5">dangerous</span>
+          <div>
+            <h4 class="text-sm font-bold uppercase tracking-widest text-error mb-2">Cascading Noise Failure</h4>
+            <p id="failureText" class="text-xs text-on-surface-variant leading-relaxed mb-3">Ripple-Carry algorithm: carry propagation requires 5+ sequential 2-qubit gates. Each MS-gate introduces ~0.5% error and ~1ms of coherence time. The total gate stack exceeds T₂ ≈ 4.2ms. Electrode switching noise from carry qubit DACs leaks into neighboring ion potential wells, causing decoherence cascade. This is the exact failure mode WISE architecture addresses by separating switching operations from gate operations via sample-and-hold capacitors.</p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="text-[9px] px-2 py-1 bg-[#ffb4ab]/10 text-error rounded mono">T₂ budget: 4.2ms</span>
+              <span class="text-[9px] px-2 py-1 bg-[#ffb4ab]/10 text-error rounded mono">Gate stack: ~5ms</span>
+              <span class="text-[9px] px-2 py-1 bg-[#ffb4ab]/10 text-error rounded mono">Crosstalk: 15%</span>
+              <span class="text-[9px] px-2 py-1 bg-[#4ade80]/10 text-[#4ade80] rounded mono">WISE fix: sample-and-hold</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Run history -->
+      <div class="md:col-span-12 glass-panel p-5 rounded-xl">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-4">Simulation Run History</h3>
+        <div id="runHistory" class="space-y-2">
+          <p class="text-xs text-on-surface-variant italic">No simulations run yet.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════ THEORY MODAL ═══ -->
+<div id="theoryModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(18,20,22,0.93);backdrop-filter:blur(16px);overflow-y:auto;padding:80px 16px 100px;">
+  <button onclick="closeTheory()" style="position:fixed;top:20px;right:20px;background:rgba(51,53,55,0.8);border:1px solid #3b494c;color:#e2e2e5;cursor:pointer;padding:8px 14px;border-radius:4px;font-size:11px;letter-spacing:0.1em;z-index:201;">✕ Close</button>
+  <div style="max-width:960px;margin:0 auto;">
+    <div style="margin-bottom:40px;">
+      <span style="color:#4ade80;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;font-family:'JetBrains Mono';">Theory Reference</span>
+      <h2 style="font-size:36px;font-weight:700;letter-spacing:-0.03em;margin-top:8px;">Simulator Guide</h2>
+      <p style="color:#bac9cc;max-width:640px;margin-top:12px;line-height:1.7;font-size:13px;">Visual language, physics, and WISE architecture explained — bridging abstract quantum states and the graphical representation in this simulator.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:20px;">
+      <div class="glass-panel" style="padding:24px;border-radius:8px;">
+        <span style="font-size:9px;color:rgba(195,245,255,0.5);letter-spacing:0.2em;text-transform:uppercase;font-family:'JetBrains Mono'">Visual Element 01</span>
+        <h3 style="font-size:20px;font-weight:700;color:#c3f5ff;margin:8px 0;">Ion (The Dot)</h3>
+        <p style="font-size:12px;color:#bac9cc;line-height:1.6;">A trapped Ytterbium-171 ion in a linear Paul trap. Ground state |0⟩ = cyan glow. Excited state |1⟩ = magenta/pink glow. Size indicates probability amplitude. Ancilla (Q₂) starts dark — dashed border.</p>
+        <div style="margin-top:16px;display:flex;gap:8px;align-items:center;">
+          <div style="width:14px;height:14px;background:#c3f5ff;border-radius:50%;box-shadow:0 0 16px rgba(195,245,255,0.8);animation:ionPulse 2s ease-in-out infinite;"></div>
+          <span style="font-size:10px;color:#849396;font-family:'JetBrains Mono'">|0⟩ ground state</span>
+          <div style="width:14px;height:14px;background:#f8acff;border-radius:50%;box-shadow:0 0 20px rgba(248,172,255,0.9);animation:ionPulse 1.5s ease-in-out infinite;margin-left:8px;"></div>
+          <span style="font-size:10px;color:#849396;font-family:'JetBrains Mono'">|1⟩ excited</span>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="padding:24px;border-radius:8px;">
+        <span style="font-size:9px;color:rgba(248,172,255,0.5);letter-spacing:0.2em;text-transform:uppercase;font-family:'JetBrains Mono'">Visual Element 02</span>
+        <h3 style="font-size:20px;font-weight:700;color:#f8acff;margin:8px 0;">Excitation Field</h3>
+        <p style="font-size:12px;color:#bac9cc;line-height:1.6;">Expanding color-coded circle around an ion. Radius ∝ Rabi frequency. When a 729nm laser pulse resonates with the transition frequency ΔE=hν, the field appears. Pink = |e⟩ electronic state.</p>
+        <div style="margin-top:12px;font-family:'JetBrains Mono';font-size:9px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="padding:3px 7px;background:#282a2c;color:#f8acff;border-radius:2px;">ΔE = hν</span>
+          <span style="padding:3px 7px;background:#282a2c;color:#f8acff;border-radius:2px;">|e⟩ STATE</span>
+          <span style="padding:3px 7px;background:#282a2c;color:#c3f5ff;border-radius:2px;">729nm laser</span>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="padding:24px;border-radius:8px;">
+        <h3 style="font-size:20px;font-weight:700;color:#e2e2e5;margin-bottom:8px;">Rydberg Dressing <span style="color:#00daf3">(Ring Overlap)</span></h3>
+        <p style="font-size:12px;color:#bac9cc;line-height:1.6;">When excitation fields of two ions overlap, Rydberg-blockade creates a conditional interaction — the basis of the MS gate. Larger field = stronger Rabi coupling. Overlap = entanglement active. Implemented via off-resonant dressing laser.</p>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:'JetBrains Mono';font-size:10px;">
+          <div style="padding:10px;background:#1a1c1e;border-radius:4px;border-left:2px solid #c3f5ff;"><span style="display:block;font-size:7px;text-transform:uppercase;color:#849396;margin-bottom:3px;">Interaction</span>Dipolar Exchange</div>
+          <div style="padding:10px;background:#1a1c1e;border-radius:4px;border-left:2px solid #f8acff;"><span style="display:block;font-size:7px;text-transform:uppercase;color:#849396;margin-bottom:3px;">Coherence</span>Phase-Stable</div>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="padding:24px;border-radius:8px;border:1px solid rgba(74,222,128,0.2);">
+        <span style="font-size:9px;color:rgba(74,222,128,0.5);letter-spacing:0.2em;text-transform:uppercase;font-family:'JetBrains Mono'">Visual Element 04</span>
+        <h3 style="font-size:20px;font-weight:700;color:#4ade80;margin:8px 0;">WISE Transport</h3>
+        <p style="font-size:12px;color:#bac9cc;line-height:1.6;">Green dashed arrow = ion shuttle. In WISE architecture, rather than routing signals to where qubits sit, the qubits (ions) are physically transported to shared gate zones. ~100 DACs handle this via integrated switch network regardless of total qubit count.</p>
+        <div style="margin-top:12px;font-family:'JetBrains Mono';font-size:9px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="padding:3px 7px;background:#282a2c;color:#4ade80;border-radius:2px;">QCCD architecture</span>
+          <span style="padding:3px 7px;background:#282a2c;color:#4ade80;border-radius:2px;">100μs shuttle time</span>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="padding:24px;border-radius:8px;border:1px solid rgba(255,180,171,0.2);">
+        <span style="font-size:9px;color:rgba(255,180,171,0.5);letter-spacing:0.2em;text-transform:uppercase;font-family:'JetBrains Mono'">Visual Element 05</span>
+        <h3 style="font-size:20px;font-weight:700;color:#ffb4ab;margin:8px 0;">Noise &amp; Failure</h3>
+        <p style="font-size:12px;color:#bac9cc;line-height:1.6;">Red ion (⚠) = decoherence or error state |?⟩. Flashing red wires = crosstalk from neighboring electrode potentials. Cascading: when carry qubit T₂ budget exhausted, qubit enters mixed state — no longer usable for computation.</p>
+        <div style="margin-top:12px;font-family:'JetBrains Mono';font-size:9px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="padding:3px 7px;background:#282a2c;color:#ffb4ab;border-radius:2px;">T₂ ≈ 4.2ms</span>
+          <span style="padding:3px 7px;background:#282a2c;color:#ffb4ab;border-radius:2px;">|?⟩ mixed state</span>
+        </div>
+      </div>
+
+      <div class="glass-panel" style="padding:24px;border-radius:8px;">
+        <h3 style="font-size:20px;font-weight:700;color:#e2e2e5;margin-bottom:8px;">Photon Readout</h3>
+        <p style="font-size:12px;color:#bac9cc;line-height:1.6;">370nm fluorescence laser drives cycling transition. Excited ions emit photons (shown as rising dots). Ground state ions remain dark. PMT/CCD collects photons → classical bit determination. Each photon burst = one qubit measurement.</p>
+        <div style="margin-top:12px;font-family:'JetBrains Mono';font-size:9px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="padding:3px 7px;background:#282a2c;color:#00e5ff;border-radius:2px;">370nm Yb-171</span>
+          <span style="padding:3px 7px;background:#282a2c;color:#c3f5ff;border-radius:2px;">PMT detection</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:20px 24px;background:#1a1c1e;border-radius:8px;border:1px solid rgba(59,73,76,0.4);display:flex;gap:16px;align-items:start;">
+      <span class="material-symbols-outlined" style="color:#4ade80;margin-top:2px;">science</span>
+      <div>
+        <h4 style="font-size:13px;font-weight:700;margin-bottom:6px;">Reference Paper</h4>
+        <p style="font-size:11px;color:#bac9cc;line-height:1.7;">This simulator incorporates the WISE architecture from: <em>Malinowski, M., Allcock, D.T.C. &amp; Ballance, C.J. — "How to wire a 1000-qubit trapped-ion quantum computer", PRX Quantum 4, 040313 (2023), arXiv:2305.12773.</em> The WISE-Optimized algorithm in this simulator demonstrates how transport-assisted gates and sample-and-hold electrode control enable quantum arithmetic circuits that would otherwise fail due to T₂ decoherence.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ STATE ═══
+const state = {
+  inputA:0, inputB:0,
+  algo:'halfAdder',
+  simStep:0, simSteps:[],
+  simRunning:false, simTimer:null,
+  lastResult:null, runHistory:[],
+  circuitGates:Array(24).fill(null),
+  dragGate:null, dragColor:null,
+};
+
+// ═══ NAVIGATION ═══
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
+  const page = document.getElementById('page-'+name);
+  if (page) { page.style.display = name==='gate'?'flex':'block'; page.style.flexDirection = name==='gate'?'column':''; page.classList.add('active'); }
+  document.querySelectorAll('.nav-link').forEach(l => { l.style.color=l.dataset.page===name?'#c3f5ff':'rgba(248,172,255,0.6)'; l.style.background=l.dataset.page===name?'rgba(195,245,255,0.08)':''; });
+  document.querySelectorAll('.bottom-nav').forEach(b => { const a=b.dataset.page===name; b.style.color=a?'#c3f5ff':'rgba(248,172,255,0.4)'; b.style.background=a?'rgba(195,245,255,0.08)':''; });
+  if (name==='results') updateResultsPage();
+}
+
+// ═══ INPUT CONTROLS ═══
+function setInput(q,v) {
+  if (q==='A') { state.inputA=v; document.getElementById('btnA0').style.background=v===0?'rgba(195,245,255,0.15)':''; document.getElementById('btnA0').style.color=v===0?'#c3f5ff':''; document.getElementById('btnA1').style.background=v===1?'rgba(195,245,255,0.15)':''; document.getElementById('btnA1').style.color=v===1?'#c3f5ff':''; }
+  else { state.inputB=v; document.getElementById('btnB0').style.background=v===0?'rgba(195,245,255,0.15)':''; document.getElementById('btnB0').style.color=v===0?'#c3f5ff':''; document.getElementById('btnB1').style.background=v===1?'rgba(195,245,255,0.15)':''; document.getElementById('btnB1').style.color=v===1?'#c3f5ff':''; }
+  simReset();
+}
+
+document.getElementById('algoSelect').addEventListener('change', function() {
+  state.algo=this.value;
+  const algoNames={halfAdder:'Half Adder',fullAdder:'Full Adder',ripple:'Ripple-Carry',wise_opt:'WISE-Optimized'};
+  document.getElementById('algoModeBadge').textContent=algoNames[this.value]||this.value;
+  document.getElementById('wiseBanner').style.display=this.value==='wise_opt'?'flex':'none';
+  simReset();
+});
+
+// ═══ TRUTH TABLE ═══
+function buildTruthTable() {
+  const rows=[{a:0,b:0,sum:0,carry:0},{a:0,b:1,sum:1,carry:0},{a:1,b:0,sum:1,carry:0},{a:1,b:1,sum:0,carry:1}];
+  const container=document.getElementById('truthTable');
+  const header=container.querySelector('.grid');
+  container.innerHTML=''; container.appendChild(header);
+  rows.forEach((r,i) => {
+    const div=document.createElement('div'); div.className='truth-row grid grid-cols-4 px-2 py-1 rounded text-xs mono'; div.id='truth-row-'+i;
+    div.innerHTML=`<span>${r.a}</span><span>${r.b}</span><span style="color:#c3f5ff">${r.sum}</span><span style="color:#f8acff">${r.carry}</span>`;
+    container.appendChild(div);
+  });
+}
+
+function highlightTruthRow(a,b) {
+  document.querySelectorAll('.truth-row').forEach(r=>r.classList.remove('active','active-carry'));
+  const idx=a*2+b; const row=document.getElementById('truth-row-'+idx);
+  if (row) { row.classList.add((a===1&&b===1)?'active-carry':'active'); }
+}
+
+// ═══ MINI CIRCUIT DIAGRAMS ═══
+const circuitDefs = {
+  halfAdder: { gates:[{q:0,t:1,label:'X',c:'#c3f5ff'},{q:0,t:2,label:'MS',c:'#f8acff'},{q:1,t:2,label:'MS',c:'#f8acff',entangle:true,qB:0},{q:2,t:3,label:'T',c:'#c3f5ff'},{q:0,t:4,label:'M',c:'#849396'},{q:1,t:4,label:'M',c:'#849396'},{q:2,t:4,label:'M',c:'#849396'}], highlight:[] },
+  fullAdder: { gates:[{q:0,t:1,label:'X',c:'#c3f5ff'},{q:1,t:1,label:'H',c:'#c3f5ff'},{q:1,t:2,label:'MS',c:'#f8acff'},{q:0,t:2,label:'MS',c:'#f8acff',entangle:true,qB:1},{q:0,t:3,label:'MS',c:'#f8acff'},{q:2,t:3,label:'MS',c:'#f8acff',entangle:true,qB:0},{q:0,t:4,label:'Rz',c:'#c3f5ff'},{q:0,t:5,label:'M',c:'#849396'},{q:1,t:5,label:'M',c:'#849396'},{q:2,t:5,label:'M',c:'#849396'}], highlight:[] },
+  ripple: { gates:[{q:0,t:1,label:'X',c:'#c3f5ff'},{q:0,t:2,label:'CN',c:'#f8acff'},{q:1,t:2,label:'CN',c:'#f8acff',entangle:true,qB:0},{q:0,t:3,label:'TF',c:'#ffb4ab'},{q:1,t:3,label:'TF',c:'#ffb4ab',entangle:true,qB:0},{q:2,t:3,label:'TF',c:'#ffb4ab'},{q:1,t:4,label:'CN',c:'#ffb4ab'},{q:2,t:4,label:'CN',c:'#ffb4ab',entangle:true,qB:1},{q:1,t:5,label:'⚠',c:'#ffb4ab'},{q:2,t:6,label:'⚠',c:'#ffb4ab'},{q:0,t:7,label:'M',c:'#849396'},{q:1,t:7,label:'M',c:'#849396'},{q:2,t:7,label:'M',c:'#849396'}], highlight:[] },
+  wise_opt: { gates:[{q:0,t:1,label:'X',c:'#c3f5ff'},{q:0,t:2,label:'T',c:'#4ade80'},{q:0,t:3,label:'MS',c:'#f8acff'},{q:1,t:3,label:'MS',c:'#f8acff',entangle:true,qB:0},{q:1,t:4,label:'MS',c:'#f8acff'},{q:2,t:4,label:'MS',c:'#f8acff',entangle:true,qB:1},{q:0,t:5,label:'Rz',c:'#c3f5ff'},{q:0,t:6,label:'M',c:'#849396'},{q:1,t:6,label:'M',c:'#849396'},{q:2,t:6,label:'M',c:'#849396'}], highlight:[] }
+};
+
+function drawMiniCircuit(algo, highlightStep) {
+  const svg=document.getElementById('miniCircuit'); if (!svg) return;
+  svg.innerHTML='';
+  const def=circuitDefs[algo]; if (!def) return;
+  const qY=[20,55,90]; const tX=t=>25+t*28; const W=260; const H=120;
+  // qubit lines
+  for(let q=0;q<3;q++) { const line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1','10'); line.setAttribute('x2',String(W)); line.setAttribute('y1',String(qY[q])); line.setAttribute('y2',String(qY[q])); line.setAttribute('stroke','rgba(132,147,150,0.2)'); line.setAttribute('stroke-width','1'); svg.appendChild(line); }
+  // qubit labels
+  for(let q=0;q<3;q++) { const t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x','6'); t.setAttribute('y',String(qY[q]+3)); t.setAttribute('fill','#849396'); t.setAttribute('font-size','8'); t.setAttribute('font-family','JetBrains Mono'); t.setAttribute('text-anchor','middle'); t.textContent='Q'+q; svg.appendChild(t); }
+  // entangle lines
+  def.gates.forEach(g => { if (g.entangle && g.qB!==undefined) { const line=document.createElementNS('http://www.w3.org/2000/svg','line'); line.setAttribute('x1',String(tX(g.t))); line.setAttribute('x2',String(tX(g.t))); line.setAttribute('y1',String(Math.min(qY[g.q],qY[g.qB]))); line.setAttribute('y2',String(Math.max(qY[g.q],qY[g.qB]))); line.setAttribute('stroke',g.c); line.setAttribute('stroke-width','1'); line.setAttribute('opacity','0.5'); svg.appendChild(line); } });
+  // gates
+  def.gates.forEach((g,i) => {
+    const x=tX(g.t); const y=qY[g.q];
+    const isActive = highlightStep!==undefined && i===highlightStep;
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect'); rect.setAttribute('x',String(x-9)); rect.setAttribute('y',String(y-9)); rect.setAttribute('width','18'); rect.setAttribute('height','18'); rect.setAttribute('rx','2'); rect.setAttribute('fill',isActive?g.c:'rgba(40,42,44,0.8)'); rect.setAttribute('stroke',g.c); rect.setAttribute('stroke-width',isActive?'1.5':'0.8'); rect.setAttribute('opacity',isActive?'1':'0.7'); svg.appendChild(rect);
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',String(x)); t.setAttribute('y',String(y+4)); t.setAttribute('fill',isActive?'#121416':g.c); t.setAttribute('font-size','7'); t.setAttribute('font-family','JetBrains Mono'); t.setAttribute('text-anchor','middle'); t.setAttribute('font-weight','700'); t.textContent=g.label; svg.appendChild(t);
+  });
+}
+
+// ═══ SIMULATION STEPS ═══
+function buildSimSteps(a,b,algo) {
+  const steps=[];
+  if (algo==='halfAdder') {
+    steps.push({label:'State preparation: Doppler cooling → sideband cooling to motional ground state n̄≈0.04. WISE: shim electrodes pre-charged.',laser:false,entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:b===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:false,ionCEx:false,phonon:false,miniGate:0});
+    steps.push({label:'729nm π-pulse on Q₀ — Rabi drive prepares computational basis. Electrode switch network in OPEN state (no noise).',laser:true,laserTarget:'A',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:b===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:b===1,ionCEx:false,phonon:false,miniGate:1});
+    steps.push({label:'XOR gate (CNOT via MS): Q₀ controls Q₁ via shared COM phonon mode. Bichromatic 729nm drives red+blue sidebands.',laser:true,laserTarget:'AB',entangle:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:(a^b)===1,ionCEx:false,phonon:true,miniGate:2});
+    steps.push({label:'AND gate (Toffoli-like): Q₂ ancilla encodes carry via Rydberg dressing field — field circles expand and overlap between Q₁ and Q₂.',laser:true,laserTarget:'BC',entangle:(a===1&&b===1),ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:a===1,ionBEx:(a^b)===1,ionCEx:(a&b)===1,phonon:false,miniGate:3});
+    steps.push({label:'Fluorescence readout: 370nm photon collection via PMT. Excited ions emit visible photons. State collapse → classical bits.',laser:true,laserTarget:'readout',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:false,ionBEx:false,ionCEx:false,phonon:false,readout:true,sum:a^b,carry:a&b,miniGate:4});
+  } else if (algo==='fullAdder') {
+    steps.push({label:'State prep: Doppler + sideband cooling. Cin=0 assumed. WISE demux pre-charges all shim electrodes.',laser:false,entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:b===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:false,ionCEx:false,phonon:false,miniGate:0});
+    steps.push({label:'H gate on Q₁ — 729nm π/2 pulse creates |+⟩ superposition. Prepares Q₁ for MS gate interaction.',laser:true,laserTarget:'B',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:'|+⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:true,ionCEx:false,phonon:false,miniGate:1});
+    steps.push({label:'MS gate Q₀–Q₁: bichromatic 729nm drives both sidebands simultaneously via COM phonon bus. Creates Bell-like entanglement.',laser:true,laserTarget:'AB',entangle:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:(a^b)===1,ionCEx:false,phonon:true,miniGate:2});
+    steps.push({label:'MS gate Q₁–Q₂: carry propagation. Rydberg dressing field expands — circle on Q₁ grows to overlap Q₂ (ancilla).',laser:true,laserTarget:'BC',entangle:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:false,ionBEx:(a^b)===1,ionCEx:(a&b)===1,phonon:true,miniGate:3});
+    steps.push({label:'Disentangling Rz phase gate — corrective Z rotation on Q₀ isolates logical outputs. Phonon mode returned to vacuum.',laser:true,laserTarget:'A',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:a===1,ionBEx:false,ionCEx:(a&b)===1,phonon:false,miniGate:4});
+    steps.push({label:'Fluorescence readout on all three qubits — 370nm photon emission. PMT counts photons per ion.',laser:true,laserTarget:'readout',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:false,ionBEx:false,ionCEx:false,phonon:false,readout:true,sum:a^b,carry:a&b,miniGate:5});
+  } else if (algo==='ripple') {
+    steps.push({label:'⚠ WARNING: Ripple-Carry requires 5+ sequential 2Q gates. T₂ budget = 4.2ms. Gate stack ≈ 5ms. Standard wiring: 10,000+ DAC lines needed. Decoherence risk CRITICAL.',laser:false,entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:b===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:false,ionCEx:false,phonon:false,noisy:false,miniGate:0});
+    steps.push({label:'Gate 1/5 — CNOT Q₀→Q₁. Fidelity: 99.5%. Standard DAC wiring active — switching transients visible on electrode potentials.',laser:true,laserTarget:'AB',entangle:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:(a^b)===1,ionCEx:false,phonon:true,noisy:false,miniGate:1});
+    steps.push({label:'Gate 2/5 — Toffoli partial Q₀,Q₁→Q₂. Fidelity: 98.8%. T₂ budget used: 1.1ms. DAC switching noise beginning to accumulate.',laser:true,laserTarget:'BC',entangle:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:false,ionBEx:(a^b)===1,ionCEx:(a&b)===1,phonon:true,noisy:false,miniGate:2});
+    steps.push({label:'⚠ Gate 3/5 — Carry CNOT. CROSSTALK DETECTED: Q₂ electrode coupling to neighbors. DAC multiplexer switching near ion motional frequency (~1-10 MHz). Fidelity: 95.1%.',laser:true,laserTarget:'AB',entangle:(a===1&&b===1),ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:a===1,ionBEx:(a^b)===1,ionCEx:(a&b)===1,phonon:false,noisy:true,miniGate:3});
+    steps.push({label:'⚠⚠ Gate 4/5 — T₂ COHERENCE EXCEEDED. Sequential gate stack exceeds 4.2ms budget. Q₂ enters mixed state |?⟩. Cascade decoherence. Would NOT occur with WISE sample-and-hold.',laser:true,laserTarget:'B',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:'|?⟩',ionAEx:false,ionBEx:(a^b)===1,ionCEx:false,phonon:false,noisy:true,cascade:true,miniGate:4});
+    steps.push({label:'⚠⚠⚠ READOUT ERROR: carry qubit in mixed state. Sum output unreliable. Algorithm FAILED. WISE fix: transport ions to dedicated gate zones with pre-charged shim electrodes — gate speed 40-2600 layers/sec.',laser:true,laserTarget:'readout',entangle:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:'|?⟩',ionAEx:false,ionBEx:false,ionCEx:false,phonon:false,readout:true,noisy:true,sum:a^b,carry:(a&b)===1?'ERR':0,miniGate:5});
+  } else if (algo==='wise_opt') {
+    steps.push({label:'WISE State Prep: ~100 dynamic DACs connected via integrated switch network. All shim electrodes pre-charged via demux. Switch opens — sample-and-hold capacitors maintain voltages.',laser:false,entangle:false,transport:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:b===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:false,ionCEx:false,phonon:false,wise:true,miniGate:0});
+    steps.push({label:'WISE Ion Shuttle: Q₀ and Q₁ transported to Gate Zone A via dynamic electrode waveforms. ~100μs shuttle. Switch network routes the same DAC pool — only ~100 DACs total regardless of qubit count.',laser:false,entangle:false,transport:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:b===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:false,ionCEx:false,phonon:false,wise:true,miniGate:1});
+    steps.push({label:'WISE MS Gate Q₀–Q₁: Bichromatic laser drives Gate Zone A. Switch network in OPEN state — no MUX noise during gate. Transport-assisted Rabi frequency control. Fidelity: 99.5%.',laser:true,laserTarget:'AB',entangle:true,transport:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:'|0⟩',ionAEx:a===1,ionBEx:(a^b)===1,ionCEx:false,phonon:true,wise:true,miniGate:2});
+    steps.push({label:'WISE Carry Gate: Q₂ shuttled to Gate Zone B. Same switch network handles this — parallel zone execution allowed as both are dynamic-electrode operations. MS gate Q₁–Q₂. Fidelity: 99.2%.',laser:true,laserTarget:'BC',entangle:true,transport:true,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:false,ionBEx:(a^b)===1,ionCEx:(a&b)===1,phonon:true,wise:true,miniGate:3});
+    steps.push({label:'WISE Rz correction + readout zone shuttle: all qubits transported to readout zone. Total gate depth: 3 (zone-parallel). T₂ budget used: ~1.2ms << 4.2ms limit. Algorithm SUCCEEDS.',laser:true,laserTarget:'readout',entangle:false,transport:false,ionAState:a===1?'|1⟩':'|0⟩',ionBState:(a^b)===1?'|1⟩':'|0⟩',ionCState:(a&b)===1?'|1⟩':'|0⟩',ionAEx:false,ionBEx:false,ionCEx:false,phonon:false,readout:true,wise:true,sum:a^b,carry:a&b,miniGate:4});
+  }
+  return steps;
+}
+
+// ═══ ANIMATION HELPERS ═══
+function animateField(el, r, fill) {
+  if (!el) return;
+  if (r===0) { el.setAttribute('r','0'); return; }
+  el.setAttribute('r',String(r));
+  if (fill) el.setAttribute('fill',fill);
+}
+
+function emitPhotons(step) {
+  const pg=document.getElementById('photonGroup'); if (!pg) return;
+  pg.innerHTML='';
+  const positions=step.ionAEx?[[135,165]]:[];
+  if (step.ionBEx!==false) positions.push([345,165]);
+  if (step.ionCEx) positions.push([540,165]);
+  [[135,165],[345,165],[540,165]].forEach(([cx,cy]) => {
+    for(let i=0;i<3;i++) {
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',String(cx+(Math.random()-0.5)*20)); c.setAttribute('cy',String(cy-10));
+      c.setAttribute('r','3'); c.setAttribute('fill','#00e5ff'); c.setAttribute('opacity','0.9');
+      c.style.animation=`photonEmit ${0.5+Math.random()*0.3}s ${i*0.15}s ease forwards`;
+      pg.appendChild(c);
+    }
+  });
+  setTimeout(()=>{ if(pg) pg.innerHTML=''; }, 1200);
+}
+
+// ═══ APPLY SIMULATION STEP ═══
+function applyStep(step) {
+  if (!step) return;
+  const ionACore=document.getElementById('ionACore'), ionBCore=document.getElementById('ionBCore'), ionCCore=document.getElementById('ionCCore');
+  const ionAField=document.getElementById('ionAField'), ionBField=document.getElementById('ionBField'), ionCField=document.getElementById('ionCField');
+  const ionAStateEl=document.getElementById('ionAState'), ionBStateEl=document.getElementById('ionBState'), ionCStateEl=document.getElementById('ionCState');
+  const transportArrow=document.getElementById('transportArrow'), noiseIndicator=document.getElementById('noiseIndicator');
+  const phononGroup=document.getElementById('phononGroup');
+  const stepLogText=document.getElementById('stepLogText');
+
+  // Step log
+  if (stepLogText) stepLogText.textContent=step.label;
+  if (step.miniGate!==undefined) {
+    drawMiniCircuit(state.algo, step.miniGate);
+    document.getElementById('circuitHighlight').textContent=step.label.substring(0,60)+'...';
+  }
+
+  // Ion A
+  ionAStateEl.textContent=step.ionAState;
+  if (step.ionAEx) { ionACore.setAttribute('fill','#f8acff'); ionACore.setAttribute('filter','url(#strongGlow)'); animateField(ionAField,55,'url(#ionGradSecondary)'); }
+  else { ionACore.setAttribute('fill','#c3f5ff'); ionACore.setAttribute('filter','url(#glow)'); animateField(ionAField,0,''); }
+
+  // Ion B
+  ionBStateEl.textContent=step.ionBState;
+  if (step.ionBEx) { ionBCore.setAttribute('fill','#f8acff'); ionBCore.setAttribute('filter','url(#strongGlow)'); animateField(ionBField,55,'url(#ionGradSecondary)'); }
+  else { ionBCore.setAttribute('fill','#c3f5ff'); ionBCore.setAttribute('filter','url(#glow)'); animateField(ionBField,0,''); }
+
+  // Ion C
+  ionCStateEl.textContent=step.ionCState;
+  if (step.ionCEx) { ionCCore.setAttribute('fill','#f8acff'); ionCCore.removeAttribute('stroke'); ionCCore.setAttribute('filter','url(#strongGlow)'); ionCStateEl.setAttribute('fill','#f8acff'); animateField(ionCField,45,'url(#ionGradSecondary)'); }
+  else if (step.ionCState==='|?⟩') { ionCCore.setAttribute('fill','#ffb4ab'); ionCCore.setAttribute('filter','url(#glow)'); ionCStateEl.setAttribute('fill','#ffb4ab'); animateField(ionCField,30,'url(#ionGradSecondary)'); }
+  else { ionCCore.setAttribute('fill','#333537'); ionCCore.setAttribute('stroke','#849396'); ionCCore.setAttribute('filter','url(#glow)'); ionCStateEl.setAttribute('fill','#849396'); animateField(ionCField,0,''); }
+
+  // WISE-specific: green field for transport-assisted
+  if (step.wise && !step.noisy) {
+    if (step.ionAEx) { ionACore.setAttribute('fill','#4ade80'); ionACore.setAttribute('filter','url(#strongGlow)'); animateField(ionAField,55,'url(#ionGradGreen)'); }
+    if (step.ionBEx) { ionBCore.setAttribute('fill','#4ade80'); ionBCore.setAttribute('filter','url(#strongGlow)'); animateField(ionBField,55,'url(#ionGradGreen)'); }
+    if (step.ionCEx) { ionCCore.setAttribute('fill','#4ade80'); ionCCore.removeAttribute('stroke'); ionCCore.setAttribute('filter','url(#strongGlow)'); animateField(ionCField,45,'url(#ionGradGreen)'); }
+  }
+
+  // Transport arrow (WISE shuttle)
+  if (transportArrow) transportArrow.setAttribute('opacity', step.transport?'1':'0');
+
+  // Noise indicator
+  if (noiseIndicator) noiseIndicator.setAttribute('opacity', step.noisy?'1':'0');
+
+  // Phonon
+  if (phononGroup) phononGroup.setAttribute('opacity', step.phonon?'1':'0');
+
+  // Laser beams
+  const laserGroup=document.getElementById('laserGroup'), laserLabelGroup=document.getElementById('laserLabelGroup');
+  if (step.laser) {
+    laserGroup.setAttribute('opacity','1'); laserLabelGroup.setAttribute('opacity','1');
+    const lA=document.getElementById('laserA'), lB=document.getElementById('laserB'), lC=document.getElementById('laserC');
+    if (step.laserTarget==='readout') { lA.setAttribute('stroke','#00e5ff'); lB.setAttribute('stroke','#00e5ff'); lC.setAttribute('stroke','#00e5ff'); }
+    else { lA.setAttribute('stroke',step.wise?'#4ade80':'#c3f5ff'); lB.setAttribute('stroke','#f8acff'); lC.setAttribute('stroke',step.wise?'#4ade80':'#c3f5ff'); }
+    if (step.readout) emitPhotons(step);
+  } else { laserGroup.setAttribute('opacity','0'); laserLabelGroup.setAttribute('opacity','0'); }
+
+  // Entanglement
+  const entCircA=document.getElementById('entCircleA'), entCircB=document.getElementById('entCircleB'), entCircC=document.getElementById('entCircleC');
+  const entOverlap=document.getElementById('entOverlap');
+  if (step.entangle) {
+    const r=55; const ec=step.wise?'#4ade80':'#c3f5ff';
+    if (step.laserTarget==='BC'||step.laserTarget==='AB') {
+      entCircA.setAttribute('r', step.laserTarget==='AB'?String(r):'0'); entCircA.setAttribute('opacity',step.laserTarget==='AB'?'0.5':'0'); entCircA.setAttribute('stroke',ec);
+      entCircB.setAttribute('r',String(r)); entCircB.setAttribute('opacity','0.5'); entCircB.setAttribute('stroke',ec);
+      entCircC.setAttribute('r', step.laserTarget==='BC'?String(r):'0'); entCircC.setAttribute('opacity',step.laserTarget==='BC'?'0.5':'0'); entCircC.setAttribute('stroke',ec);
+      if (step.laserTarget==='AB') { entOverlap.setAttribute('x','175'); entOverlap.setAttribute('width','200'); entOverlap.setAttribute('opacity','1'); }
+      else { entOverlap.setAttribute('x','385'); entOverlap.setAttribute('width','195'); entOverlap.setAttribute('opacity','1'); }
+    }
+  } else { entCircA.setAttribute('r','0'); entCircB.setAttribute('r','0'); entCircC.setAttribute('r','0'); if(entOverlap)entOverlap.setAttribute('opacity','0'); }
+
+  // Status dot
+  const dot=document.getElementById('simStatusDot'), label=document.getElementById('simStatusLabel');
+  if (step.readout) { dot.style.background='#00e5ff'; label.textContent='Readout'; }
+  else if (step.noisy) { dot.style.background='#ffb4ab'; label.textContent='⚠ Noise'; }
+  else if (step.entangle) { dot.style.background='#f8acff'; label.textContent='Entangled'; }
+  else if (step.transport) { dot.style.background='#4ade80'; label.textContent='Shuttling'; }
+  else if (step.laser) { dot.style.background='#c3f5ff'; label.textContent='Gate Op'; }
+  else { dot.style.background='#849396'; label.textContent='Prep'; }
+
+  // Truth table + state vector
+  highlightTruthRow(state.inputA, state.inputB);
+  updateStateVector(step);
+
+  // Final result
+  if (step.sum!==undefined) {
+    state.lastResult={sum:step.sum, carry:step.carry, algo:state.algo, a:state.inputA, b:state.inputB};
+    logRun(state.lastResult);
+  }
+}
+
+function updateStateVector(step) {
+  const rows=document.querySelectorAll('#stateVector .sv-row');
+  const a=state.inputA, b=state.inputB;
+  const basis={0:0,1:0,2:0,3:0};
+  const idx=a*2+b; basis[idx]=1;
+  if (step.entangle) { basis[0]=0.5; basis[1]=0.5; basis[2]=0.5; basis[3]=0.5; }
+  rows.forEach((row,i) => {
+    const fill=row.querySelector('.bar-fill'), val=row.querySelector('span');
+    const pct=(basis[i]*100).toFixed(0)+'%';
+    fill.style.width=pct; val.textContent=basis[i].toFixed(2);
+    val.style.color=basis[i]>0.5?'#c3f5ff':'#849396';
+  });
+}
+
+// ═══ SIMULATION ENGINE ═══
+function simReset() {
+  clearInterval(state.simTimer); state.simRunning=false; state.simStep=0;
+  state.simSteps=buildSimSteps(state.inputA, state.inputB, state.algo);
+  document.getElementById('stepCounter').textContent=`STEP: 0/${state.simSteps.length}`;
+  document.getElementById('simProgress').style.width='0%';
+  document.getElementById('simBtn').querySelector('span').textContent='play_arrow';
+  document.getElementById('simBtnLabel').textContent='Run';
+  document.getElementById('simStatusDot').style.background='#849396';
+  document.getElementById('simStatusLabel').textContent='Ready';
+  // reset ions
+  ['ionACore','ionBCore','ionCCore'].forEach(id=>{const el=document.getElementById(id);if(el){el.setAttribute('fill',id==='ionCCore'?'#333537':'#c3f5ff');if(id==='ionCCore')el.setAttribute('stroke','#849396');else el.removeAttribute('stroke');}});
+  ['ionAField','ionBField','ionCField'].forEach(id=>{const el=document.getElementById(id);if(el)el.setAttribute('r','0');});
+  ['entCircleA','entCircleB','entCircleC'].forEach(id=>{const el=document.getElementById(id);if(el)el.setAttribute('r','0');});
+  const lg=document.getElementById('laserGroup');if(lg)lg.setAttribute('opacity','0');
+  const ta=document.getElementById('transportArrow');if(ta)ta.setAttribute('opacity','0');
+  const ni=document.getElementById('noiseIndicator');if(ni)ni.setAttribute('opacity','0');
+  drawMiniCircuit(state.algo, undefined);
+  document.getElementById('circuitHighlight').textContent='';
+  document.getElementById('stepLogText').textContent='Select algorithm and press ▶ to begin simulation.';
+}
+
+function simToggle() {
+  if (state.simRunning) {
+    clearInterval(state.simTimer); state.simRunning=false;
+    document.getElementById('simBtn').querySelector('span').textContent='play_arrow';
+    document.getElementById('simBtnLabel').textContent='Run';
+  } else {
+    if (state.simStep>=state.simSteps.length) simReset();
+    state.simRunning=true;
+    document.getElementById('simBtn').querySelector('span').textContent='pause';
+    document.getElementById('simBtnLabel').textContent='Pause';
+    state.simTimer=setInterval(()=>{ if(state.simStep<state.simSteps.length){simStep();}else{clearInterval(state.simTimer);state.simRunning=false;document.getElementById('simBtn').querySelector('span').textContent='play_arrow';document.getElementById('simBtnLabel').textContent='Run';} }, 1800);
+  }
+}
+
+function simStep() {
+  if (state.simStep>=state.simSteps.length) return;
+  applyStep(state.simSteps[state.simStep]); state.simStep++;
+  document.getElementById('stepCounter').textContent=`STEP: ${state.simStep}/${state.simSteps.length}`;
+  document.getElementById('simProgress').style.width=`${(state.simStep/state.simSteps.length)*100}%`;
+}
+
+// ═══ QCCD ZONE CONTENT ═══
+const qccdZones = {
+  prep: { icon:'❄️', title:'State Preparation', color:'#c3f5ff', desc:'Ions are Doppler-cooled and sideband-cooled to the motional ground state n̄ ≈ 0.04. The WISE switch network pre-charges all shim electrodes before cooling begins, then disconnects — the sample-and-hold capacitors maintain electrode potentials throughout the cooling sequence without any switching noise.', tags:['T_cool ~ 2ms','Shim DACs: pre-charged','Switch: OPEN (no noise)','motional_freq: ~1 MHz'] },
+  shuttle: { icon:'🚂', title:'Ion Shuttle (QCCD Transport)', color:'#4ade80', desc:'Ions are physically transported to the appropriate gate zone via dynamic electrode waveforms. The integrated switch network routes ~100 DACs to the dynamic electrodes along the transport path. Only same-type operations can be parallelized in WISE — shuttling multiple ions in the same direction can proceed simultaneously. Shuttle time ≈ 100μs.', tags:['~100 dynamic DACs','~100μs per shuttle','same-type parallelism','no additional wiring'] },
+  gate_a: { icon:'⚛️', title:'Gate Zone A (Entangling Gates)', color:'#4ade80', desc:'Q₀ and Q₁ are held in Gate Zone A for 2-qubit MS operations. The dynamic electrodes are driven by the switch network (100 DACs shared). During the gate itself, the switch is OPEN — no MUX switching occurs during the sensitive entangling operation. Shim electrodes maintain the potential well via sample-and-hold capacitors.', tags:['MS fidelity: 99.1–99.5%','Gate time: ~100–500μs','Switch: OPEN during gate','DAC pool: ~100 shared'] },
+  gate_b: { icon:'🔗', title:'Gate Zone B (Carry Operations)', color:'#4ade80', desc:'Ancilla qubit Q₂ is shuttled to Gate Zone B for carry computation (Toffoli/MS sequence). WISE allows zone B to operate simultaneously with zone A if both operations are of the same electrode type — this is the key to reducing circuit depth from O(n) to O(log n) for quantum adders.', tags:['Carry qubit zone','Zone-parallel execution','Depth reduction: O(n)→O(log n)','WISE key advantage'] },
+  readout: { icon:'📡', title:'Readout Zone (Fluorescence)', color:'#60a5fa', desc:'After gate operations, all qubits are shuttled to the readout zone. A 370nm laser drives the Yb-171 cycling transition — excited ions emit visible photons collected by PMT or CCD. Ground state ions remain dark. The fluorescence signal is discriminated into classical 0 or 1 bits. Readout fidelity ≈ 98.5%.', tags:['370nm cycling laser','PMT/CCD detection','Readout fidelity: 98.5%','→ classical bits output'] }
+};
+
+function showQCCDZone(zone) {
+  document.querySelectorAll('.zone-tab').forEach(t=>{ t.classList.remove('active-zone'); t.style.borderColor='rgba(59,73,76,0.4)'; t.style.color='#849396'; });
+  event.target.classList.add('active-zone');
+  const z=qccdZones[zone]; if (!z) return;
+  document.getElementById('qccdZoneIcon').textContent=z.icon;
+  document.getElementById('qccdZoneTitle').textContent=z.title;
+  document.getElementById('qccdZoneTitle').style.color=z.color;
+  document.getElementById('qccdZoneDesc').textContent=z.desc;
+  document.getElementById('qccdZoneTech').innerHTML=z.tags.map(tag=>`<span class="text-[9px] px-2 py-0.5 bg-surface-container-highest rounded mono" style="color:${z.color}">${tag}</span>`).join('');
+}
+
+// ═══ GATE BUILDER ═══
+function initCircuitGrid() {
+  const grid=document.getElementById('circuitGrid'); if (!grid) return;
+  grid.innerHTML='';
+  for (let row=0;row<3;row++) {
+    for (let col=0;col<8;col++) {
+      const cell=document.createElement('div');
+      cell.className='circuit-cell glass-panel rounded flex items-center justify-center'; cell.dataset.idx=row*8+col;
+      cell.style.border='1px solid rgba(59,73,76,0.2)';
+      cell.addEventListener('dragover',e=>{e.preventDefault();cell.classList.add('drag-over');});
+      cell.addEventListener('dragleave',()=>cell.classList.remove('drag-over'));
+      cell.addEventListener('drop',e=>{e.preventDefault();cell.classList.remove('drag-over');dropGate(cell);});
+      cell.addEventListener('click',()=>removeGate(cell));
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function dragStart(e) { state.dragGate=e.target.dataset.gate; state.dragColor=e.target.dataset.color; }
+
+function dropGate(cell) {
+  const idx=parseInt(cell.dataset.idx);
+  state.circuitGates[idx]={gate:state.dragGate,color:state.dragColor};
+  renderCell(cell,state.circuitGates[idx]); updateCircuitStats();
+}
+
+function removeGate(cell) {
+  const idx=parseInt(cell.dataset.idx); if (!state.circuitGates[idx]) return;
+  state.circuitGates[idx]=null; renderCell(cell,null); updateCircuitStats();
+}
+
+function renderCell(cell,g) {
+  if (!g) { cell.innerHTML=''; return; }
+  const colorMap={primary:'#c3f5ff',secondary:'#f8acff',wise:'#4ade80',outline:'#849396'};
+  const color=colorMap[g.color]||'#c3f5ff';
+  cell.innerHTML=`<div class="placed-gate" style="width:44px;height:44px;background:rgba(30,32,34,0.8);backdrop-filter:blur(12px);border:1px solid ${color}40;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 10px ${color}20;"><span style="color:${color};font-size:13px;font-weight:700;font-family:'JetBrains Mono'">${g.gate}</span></div>`;
+}
+
+function clearCircuit() {
+  state.circuitGates=Array(24).fill(null);
+  const cells=document.getElementById('circuitGrid').children;
+  for (let i=0;i<cells.length;i++) { cells[i].innerHTML=''; cells[i].style.background=''; }
+  document.getElementById('circuitFidelity').textContent='—'; document.getElementById('circuitDepth').textContent='0 gates';
+  document.getElementById('circuitDAClines').textContent='—'; document.getElementById('circuitWISEneed').textContent='—';
+  document.getElementById('buildFidVal').textContent='Fidelity: —';
+  document.getElementById('builderWarning').style.display='none';
+  document.getElementById('wiseCompilerOutput').innerHTML='<p class="text-outline">Add gates to see WISE compilation analysis.</p>';
+}
+
+function updateCircuitStats() {
+  const gates=state.circuitGates.filter(Boolean); const depth=gates.length;
+  document.getElementById('circuitDepth').textContent=depth+' gate'+(depth===1?'':'s');
+  const fidelityPer={H:99.8,X:99.9,Z:99.9,Rz:99.7,CNOT:99.3,MS:99.1,T:99.5,M:98.5};
+  let fid=100; gates.forEach(g=>{fid*=(fidelityPer[g.gate]||99)/100;}); fid=(fid*100).toFixed(2);
+  document.getElementById('circuitFidelity').textContent=fid+'%';
+  document.getElementById('buildFidVal').textContent='Fidelity: '+fid+'%';
+  document.getElementById('circuitFidelity').style.color=fid>95?'#c3f5ff':fid>80?'#f8acff':'#ffb4ab';
+  // DAC estimate
+  const twoQGates=gates.filter(g=>g.gate==='MS'||g.gate==='CNOT').length;
+  const dacLines=Math.max(20, twoQGates*10+15);
+  const wiseNeeded=dacLines>100;
+  document.getElementById('circuitDAClines').textContent=dacLines+' lines';
+  document.getElementById('circuitWISEneed').textContent=wiseNeeded?'Yes — critical':'No — manageable';
+  document.getElementById('circuitWISEneed').style.color=wiseNeeded?'#4ade80':'#849396';
+  // Warnings
+  const warn=document.getElementById('builderWarning');
+  if (depth>6||twoQGates>3) {
+    warn.style.display='block';
+    document.getElementById('builderWarningText').textContent=`Circuit depth (${depth} gates, ${twoQGates} two-qubit) may exceed T₂ coherence window. WISE architecture would reduce effective depth via zone-parallel execution. Estimated DAC lines: ${dacLines} — ${wiseNeeded?'WISE required for scalable operation.':'within manageable range.'}`;
+  } else { warn.style.display='none'; }
+  // WISE compiler output
+  const wco=document.getElementById('wiseCompilerOutput');
+  const q0gates=state.circuitGates.slice(0,8).filter(Boolean).length;
+  const q1gates=state.circuitGates.slice(8,16).filter(Boolean).length;
+  const q2gates=state.circuitGates.slice(16,24).filter(Boolean).length;
+  wco.innerHTML=`<p><span style="color:#4ade80">// WISE Compiler v1.0</span></p>
+    <p>Q0 gates: ${q0gates} | Q1 gates: ${q1gates} | Q2 gates: ${q2gates}</p>
+    <p>2Q entangling gates: ${twoQGates}</p>
+    <p>Est. T₂ usage: ${(twoQGates*1.1+q0gates*0.01).toFixed(1)}ms / 4.2ms budget</p>
+    <p style="color:${dacLines>100?'#4ade80':'#849396'}">WISE benefit: ${dacLines>100?'HIGH — switch network reduces '+dacLines+' → ~100 DACs':'LOW — standard wiring sufficient'}</p>
+    <p style="color:${fid>95?'#c3f5ff':'#ffb4ab'}">Circuit fidelity: ${fid}%${fid<95?' ⚠ below threshold':' ✓'}</p>`;
+}
+
+function runBuilderCircuit() { state.algo='halfAdder'; showPage('trap'); setTimeout(()=>simToggle(),200); }
+
+// ═══ RESULTS ═══
+function logRun(r) { state.runHistory.unshift({...r,timestamp:new Date().toLocaleTimeString()}); if(state.runHistory.length>8)state.runHistory.pop(); }
+
+function updateResultsPage() {
+  const r=state.lastResult; if (!r) return;
+  document.getElementById('resSumBig').textContent=r.sum==='ERR'?'ERR':String(r.sum);
+  document.getElementById('resCarryBig').textContent=r.carry==='ERR'?'ERR':String(r.carry);
+  document.getElementById('resSumBig').style.color=r.sum==='ERR'?'#ffb4ab':'#c3f5ff';
+  document.getElementById('resCarryBig').style.color=r.carry==='ERR'?'#ffb4ab':'#f8acff';
+  const algoNames={halfAdder:'Half Adder',fullAdder:'Full Adder',ripple:'Ripple-Carry',wise_opt:'WISE-Optimized'};
+  document.getElementById('resAlgo').textContent=algoNames[r.algo]||r.algo;
+  const fids={halfAdder:'99.2%',fullAdder:'97.1%',ripple:'72.3%',wise_opt:'98.4%'};
+  document.getElementById('resFidelity').textContent=fids[r.algo]||'—';
+  document.getElementById('resFidelity').style.color=r.algo==='ripple'?'#ffb4ab':r.algo==='wise_opt'?'#4ade80':'#c3f5ff';
+  document.getElementById('resWiseStatus').textContent=r.algo==='wise_opt'?'✓ WISE architecture active':r.algo==='ripple'?'⚠ WISE required':'Standard wiring';
+  document.getElementById('resWiseStatus').style.color=r.algo==='wise_opt'?'#4ade80':r.algo==='ripple'?'#ffb4ab':'#849396';
+
+  // WISE note
+  const wiseFidNote=document.getElementById('wiseFidelityNote'), wiseFidText=document.getElementById('wiseFidelityText');
+  if (r.algo==='ripple') { wiseFidNote.style.display='block'; wiseFidText.textContent='Standard wiring exhausts T₂ budget during carry propagation. WISE sample-and-hold + transport-assisted gates would recover ~26% fidelity for this computation.'; }
+  else if (r.algo==='wise_opt') { wiseFidNote.style.display='block'; wiseFidText.textContent='WISE architecture: ~100 DACs (vs 10,000+ standard), zone-parallel gate execution, 40-2600 gate layers/sec achievable. This computation used ~1.2ms of 4.2ms T₂ budget.'; }
+  else { wiseFidNote.style.display='none'; }
+
+  // Probabilities
+  const noise=r.algo==='ripple'?0.1:r.algo==='wise_opt'?0.004:0.005;
+  const probs={p00:noise/3,p01:noise/3,p10:noise/3,p11:noise/3};
+  if(r.sum===0&&r.carry===0) probs.p00=1-noise;
+  else if(r.sum===1&&r.carry===0) probs.p01=1-noise;
+  else if(r.sum===0&&r.carry===1) probs.p10=1-noise;
+  else if(r.sum!=='ERR') probs.p11=1-noise;
+  const setBar=(id,val)=>{document.getElementById(id).style.width=(val*100)+'%';document.getElementById(id+'v').textContent=val.toFixed(2);};
+  setBar('prob00',probs.p00);setBar('prob01',probs.p01);setBar('prob10',probs.p10);setBar('prob11',probs.p11);
+
+  // Noise
+  const noiseData = r.algo==='ripple'
+    ? {gate:'28.5%',gateW:28,readout:'8.2%',readoutW:8,cross:'15.1%',crossW:15,t2:'45.0%',t2W:45,mux:'3.2%',muxW:3}
+    : r.algo==='wise_opt'
+    ? {gate:'1.2%',gateW:1,readout:'0.8%',readoutW:1,cross:'0.0%',crossW:0,t2:'0.3%',t2W:0,mux:'0.3%',muxW:0}
+    : r.algo==='fullAdder'
+    ? {gate:'2.9%',gateW:3,readout:'1.5%',readoutW:2,cross:'0.3%',crossW:1,t2:'0.8%',t2W:1,mux:'0.0%',muxW:0}
+    : {gate:'0.8%',gateW:1,readout:'0.5%',readoutW:1,cross:'0.1%',crossW:0,t2:'0.2%',t2W:0,mux:'0.0%',muxW:0};
+  document.getElementById('noiseGate').textContent=noiseData.gate; document.getElementById('noiseGateBar').style.width=noiseData.gateW+'%';
+  document.getElementById('noiseReadout').textContent=noiseData.readout; document.getElementById('noiseReadoutBar').style.width=noiseData.readoutW+'%';
+  document.getElementById('noiseCross').textContent=noiseData.cross; document.getElementById('noiseCrossBar').style.width=noiseData.crossW+'%';
+  document.getElementById('noiseT2').textContent=noiseData.t2; document.getElementById('noiseT2Bar').style.width=noiseData.t2W+'%';
+  document.getElementById('noiseMUX').textContent=noiseData.mux; document.getElementById('noiseMUXBar').style.width=noiseData.muxW+'%';
+
+  // Failure panel
+  const failDiv=document.getElementById('failureExplainer');
+  failDiv.style.display=r.algo==='ripple'?'block':'none';
+
+  // Run history
+  const histEl=document.getElementById('runHistory');
+  if (state.runHistory.length===0) { histEl.innerHTML='<p class="text-xs text-on-surface-variant italic">No simulations run yet.</p>'; return; }
+  histEl.innerHTML=state.runHistory.map(run=>{
+    const an={halfAdder:'HA',fullAdder:'FA',ripple:'RC',wise_opt:'WO'};
+    const isErr=run.sum==='ERR'||run.carry==='ERR';
+    const isWise=run.algo==='wise_opt';
+    return `<div class="flex items-center gap-3 p-2 rounded bg-surface-container-lowest/50 text-xs mono flex-wrap">
+      <span style="color:#849396;min-width:56px">${run.timestamp}</span>
+      <span style="color:${isWise?'#4ade80':'#bac9cc'};min-width:24px">[${an[run.algo]||run.algo}]</span>
+      <span style="color:#849396">A=${run.a} B=${run.b}</span>
+      <span style="color:#3b494c;margin:0 4px">→</span>
+      <span style="color:#c3f5ff">Sum=${run.sum}</span>
+      <span style="color:#f8acff;margin-left:4px">Carry=${run.carry}</span>
+      ${isErr?'<span style="color:#ffb4ab;margin-left:8px">⚠ ERROR (T₂ exceeded)</span>':''}
+      ${isWise?'<span style="color:#4ade80;margin-left:8px">✓ WISE</span>':''}
+    </div>`;
+  }).join('');
+}
+
+// ═══ THEORY MODAL ═══
+function openTheory() { document.getElementById('theoryModal').style.display='block'; }
+function closeTheory() { document.getElementById('theoryModal').style.display='none'; }
+
+// ════════════════════════════════════════════════════════════
+// ═══ BLOCH SPHERE ENGINE ═══
+// ════════════════════════════════════════════════════════════
+
+// Qubit state as [theta, phi] in radians on Bloch sphere
+// theta: polar angle from |0⟩ north (0=|0⟩, π=|1⟩, π/2=superposition)
+// phi: azimuthal angle (0=|+⟩, π/2=|+i⟩, π=|-⟩, 3π/2=|-i⟩)
+const blochState = {
+  q0: { theta: 0, phi: 0, mixed: false },
+  q1: { theta: 0, phi: 0, mixed: false },
+  q2: { theta: 0, phi: 0, mixed: false },
+};
+
+// Gate definitions: what they do to Bloch sphere coordinates
+// Returns new [theta, phi] given current [theta, phi]
+const gateTransforms = {
+  // X gate: π rotation around X axis → flips |0⟩↔|1⟩
+  // θ→π-θ, φ→π+φ
+  X: (t, p) => [Math.PI - t, p + Math.PI],
+  // Z gate: π rotation around Z axis → φ→φ+π
+  Z: (t, p) => [t, p + Math.PI],
+  // H gate: π/2 rotation maps |0⟩→|+⟩, |1⟩→|-⟩
+  // Hadamard: swaps Z and X axes: θ→π/2-θ+π/2≈ maps pole to equator
+  H: (t, p) => {
+    // H maps |0⟩(θ=0) → |+⟩(θ=π/2,φ=0), |1⟩(θ=π) → |-⟩(θ=π/2,φ=π)
+    if (Math.abs(t) < 0.1) return [Math.PI/2, 0];
+    if (Math.abs(t - Math.PI) < 0.1) return [Math.PI/2, Math.PI];
+    // general: rotate around X+Z axis by π → θ → π-θ, φ stays 0
+    return [Math.PI - t, 0];
+  },
+  // Rz gate: rotation around Z by some angle (here π/4 phase correction)
+  Rz: (t, p) => [t, p + Math.PI/4],
+  // T gate (π/8): rotation around Z by π/4
+  T: (t, p) => [t, p + Math.PI/4],
+  // MS gate (Mølmer-Sørensen): creates entanglement → partial superposition
+  // Approximated as pushing toward equator: θ→π/2
+  MS: (t, p) => [Math.PI/2, p + Math.PI/6],
+  // CNOT: conditional X — if control is |1⟩, target flips
+  CNOT_control: (t, p) => [t, p],  // control unchanged
+  CNOT_target_if1: (t, p) => [Math.PI - t, p + Math.PI], // flip target
+  // Measurement: collapses to |0⟩ or |1⟩
+  M_zero: (t, p) => [0, 0],
+  M_one: (t, p) => [Math.PI, 0],
+};
+
+// Maps step gate labels to explanations
+const gateExplanations = {
+  prep: 'State Preparation — All qubits initialized to |0⟩ (north pole of Bloch sphere). Cooling drives the ion to the ground state with near-certainty.',
+  X: 'X Gate (π-pulse) — A 729nm Rabi π-pulse rotates the Bloch vector by π around the X-axis. |0⟩ → |1⟩ (north pole → south pole). This encodes the classical input bit.',
+  H: 'Hadamard (π/2-pulse) — Rotates the Bloch vector from the Z-axis to the equator, creating an equal superposition: |0⟩ → (|0⟩+|1⟩)/√2. The vector moves to the +X pole.',
+  MS: 'Mølmer-Sørensen Gate — Bichromatic laser drives red+blue sidebands via the shared COM phonon mode. Creates a Bell-like entangled state: the individual qubit vectors are pushed toward the equator, signifying superposition and entanglement. Fidelity >99%.',
+  CNOT: 'CNOT Gate — Conditional X rotation: if control qubit is |1⟩ (south pole), target qubit flips via X rotation. Mediated by phonon bus in ion trap implementation.',
+  Rz: 'Rz Phase Gate — Rotates the Bloch vector around the Z-axis by π/4. This applies a relative phase between |0⟩ and |1⟩ components. The polar angle θ is unchanged; only φ (azimuthal) advances.',
+  T: 'T Gate (Transport-assisted) — WISE architecture uses ion shuttling to implement Rz(π/4). Rotation around Z-axis by 45°. Phonon-state-controlled via transport waveforms. No switching noise during gate.',
+  readout: 'Fluorescence Readout — 370nm laser collapses the superposition. The Bloch vector snaps to north (|0⟩) or south (|1⟩) pole depending on the measurement outcome. This is irreversible state collapse.',
+  transport: 'WISE Ion Shuttle — Physical transport of ions to gate zone via dynamic electrodes. The qubit state is preserved during shuttling. ~100μs transport time; ~100 DACs shared via switch network.',
+  noisy: '⚠ Decoherence — T₂ budget exceeded or crosstalk detected. The Bloch vector contracts toward the center of the sphere (mixed state). Pure |ψ⟩ → mixed ρ = I/2. No longer useful for computation.',
+  entangle: 'Entanglement Active — Two-qubit gate in progress. Individual qubit Bloch vectors are no longer fully meaningful (reduced density matrix). Depicted as partial vectors near equator indicating maximally mixed subsystems.',
+  default: 'Gate operation applied — observe the Bloch vector rotation indicating the qubit state transformation.'
+};
+
+// Draw a single Bloch sphere into an SVG element
+function drawBlochSphere(svgEl, theta, phi, mixed, color, label) {
+  const W = 160, H = 180;
+  const cx = 80, cy = 88, R = 62;
+  svgEl.innerHTML = '';
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  function mkEl(tag, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  }
+
+  // Perspective projection: isometric-like view
+  // We rotate the sphere 30° around X to see top better
+  const perspX = 0.85, perspY = 0.5; // compression factors for 3D feel
+
+  // Background sphere
+  const sphereFill = mixed ? 'rgba(255,180,171,0.06)' : 'rgba(195,245,255,0.04)';
+  const sphereStroke = mixed ? 'rgba(255,180,171,0.3)' : 'rgba(195,245,255,0.15)';
+  svgEl.appendChild(mkEl('circle', { cx, cy, r: R, fill: sphereFill, stroke: sphereStroke, 'stroke-width': '1' }));
+
+  // Equatorial ellipse (XY plane)
+  svgEl.appendChild(mkEl('ellipse', { cx, cy, rx: R, ry: R * perspY, fill: 'none', stroke: mixed ? 'rgba(255,180,171,0.2)' : 'rgba(248,172,255,0.2)', 'stroke-width': '0.7', 'stroke-dasharray': '3,2' }));
+
+  // Meridian ellipses (XZ and YZ planes, dashed)
+  svgEl.appendChild(mkEl('ellipse', { cx, cy, rx: R * perspX, ry: R, fill: 'none', stroke: 'rgba(132,147,150,0.12)', 'stroke-width': '0.6', 'stroke-dasharray': '2,3' }));
+
+  // Z axis (vertical)
+  svgEl.appendChild(mkEl('line', { x1: cx, y1: cy - R - 8, x2: cx, y2: cy + R + 8, stroke: 'rgba(132,147,150,0.25)', 'stroke-width': '0.8' }));
+  // X axis (horizontal projected)
+  svgEl.appendChild(mkEl('line', { x1: cx - R - 6, y1: cy, x2: cx + R + 6, y2: cy, stroke: 'rgba(132,147,150,0.2)', 'stroke-width': '0.6', 'stroke-dasharray': '2,3' }));
+  // Y axis (perspective diagonal)
+  svgEl.appendChild(mkEl('line', { x1: cx + R*0.6, y1: cy - R*0.3, x2: cx - R*0.6, y2: cy + R*0.3, stroke: 'rgba(132,147,150,0.15)', 'stroke-width': '0.6', 'stroke-dasharray': '2,3' }));
+
+  // Axis labels
+  const axLabels = [
+    { x: cx + 2, y: cy - R - 11, text: 'Z', fill: '#849396' },
+    { x: cx + R + 9, y: cy + 4, text: 'X', fill: '#849396' },
+    { x: cx - R*0.7, y: cy + R*0.35 + 10, text: 'Y', fill: '#849396' },
+  ];
+  axLabels.forEach(l => {
+    const t = mkEl('text', { x: l.x, y: l.y, fill: l.fill, 'font-size': '8', 'font-family': 'JetBrains Mono', 'text-anchor': 'middle', opacity: '0.7' });
+    t.textContent = l.text;
+    svgEl.appendChild(t);
+  });
+
+  // |0⟩ pole label (north)
+  const t0 = mkEl('text', { x: cx + 6, y: cy - R + 6, fill: '#4ade80', 'font-size': '7', 'font-family': 'JetBrains Mono', opacity: '0.9' });
+  t0.textContent = '|0⟩';
+  svgEl.appendChild(t0);
+  // |1⟩ pole label (south)
+  const t1 = mkEl('text', { x: cx + 6, y: cy + R - 2, fill: '#f8acff', 'font-size': '7', 'font-family': 'JetBrains Mono', opacity: '0.9' });
+  t1.textContent = '|1⟩';
+  svgEl.appendChild(t1);
+
+  // North pole dot
+  svgEl.appendChild(mkEl('circle', { cx, cy: cy - R, r: '3', fill: '#4ade80', opacity: '0.8' }));
+  // South pole dot
+  svgEl.appendChild(mkEl('circle', { cx, cy: cy + R, r: '3', fill: '#f8acff', opacity: '0.8' }));
+  // Equator dots |+⟩ and |-⟩
+  const tPlus = mkEl('text', { x: cx + R + 3, y: cy + 3, fill: '#bac9cc', 'font-size': '6', 'font-family': 'JetBrains Mono', opacity: '0.6' });
+  tPlus.textContent = '|+⟩';
+  svgEl.appendChild(tPlus);
+  const tMinus = mkEl('text', { x: cx - R - 12, y: cy + 3, fill: '#bac9cc', 'font-size': '6', 'font-family': 'JetBrains Mono', opacity: '0.6' });
+  tMinus.textContent = '|-⟩';
+  svgEl.appendChild(tMinus);
+
+  if (mixed) {
+    // Mixed state: draw a fuzzy cloud at center
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      const r2 = 14 + Math.random() * 8;
+      svgEl.appendChild(mkEl('circle', {
+        cx: cx + Math.cos(ang) * r2 * 0.6,
+        cy: cy + Math.sin(ang) * r2 * 0.4,
+        r: '4',
+        fill: '#ffb4ab',
+        opacity: String(0.15 + Math.random() * 0.25)
+      }));
+    }
+    // Mixed state label
+    const mt = mkEl('text', { x: cx, y: cy + 4, fill: '#ffb4ab', 'font-size': '10', 'font-family': 'JetBrains Mono', 'text-anchor': 'middle', 'font-weight': '700', opacity: '0.9' });
+    mt.textContent = '|?⟩';
+    svgEl.appendChild(mt);
+    const ms = mkEl('text', { x: cx, y: cy + 16, fill: '#ffb4ab', 'font-size': '7', 'font-family': 'JetBrains Mono', 'text-anchor': 'middle', opacity: '0.6' });
+    ms.textContent = 'mixed';
+    svgEl.appendChild(ms);
+    return;
+  }
+
+  // 3D→2D projection of Bloch vector
+  // Bloch vector: (sin θ cos φ, sin θ sin φ, cos θ)
+  // Project with slight perspective tilt (tilt X axis 30° back)
+  const bx = Math.sin(theta) * Math.cos(phi);
+  const by = Math.sin(theta) * Math.sin(phi);
+  const bz = Math.cos(theta);
+
+  // SVG: X→right, Y→down; Bloch: Z→up, X→right, Y→into screen
+  // sx = cx + R*(bx*cos0 - by*sin_tilt_perspective)
+  const tiltAngle = 0.52; // ~30deg tilt to show depth
+  const sx = cx + R * (bx * perspX - by * 0.38);
+  const sy = cy - R * (bz - by * 0.28);
+
+  // Shadow (projection onto equatorial plane)
+  const shadowX = cx + R * bx * perspX;
+  const shadowY = cy + R * (-by * 0.28); // project onto equatorial ellipse
+  // Dashed line from tip to shadow
+  svgEl.appendChild(mkEl('line', { x1: sx, y1: sy, x2: shadowX, y2: shadowY, stroke: color, 'stroke-width': '0.6', 'stroke-dasharray': '2,2', opacity: '0.3' }));
+  // Shadow dot on equator
+  svgEl.appendChild(mkEl('circle', { cx: shadowX, cy: shadowY, r: '2', fill: color, opacity: '0.25' }));
+
+  // Bloch vector line (from center to tip)
+  svgEl.appendChild(mkEl('line', { x1: cx, y1: cy, x2: sx, y2: sy, stroke: color, 'stroke-width': '2', 'stroke-linecap': 'round', opacity: '0.9' }));
+
+  // Arrowhead at tip
+  const dx = sx - cx, dy = sy - cy;
+  const len = Math.sqrt(dx*dx + dy*dy) || 1;
+  const nx = dx/len, ny = dy/len;
+  const perpX2 = -ny, perpY2 = nx;
+  const arrowSize = 5;
+  const ax = sx - nx*arrowSize, ay = sy - ny*arrowSize;
+  const arrowPts = `${sx},${sy} ${ax + perpX2*3},${ay + perpY2*3} ${ax - perpX2*3},${ay - perpY2*3}`;
+  svgEl.appendChild(mkEl('polygon', { points: arrowPts, fill: color, opacity: '0.95' }));
+
+  // Tip dot (glowing)
+  const tipColor = theta < 0.2 ? '#4ade80' : theta > Math.PI - 0.2 ? '#f8acff' :
+    (Math.abs(theta - Math.PI/2) < 0.15 ? '#fbbf24' : color);
+  svgEl.appendChild(mkEl('circle', { cx: sx, cy: sy, r: '4', fill: tipColor, opacity: '0.95' }));
+  // Glow ring
+  svgEl.appendChild(mkEl('circle', { cx: sx, cy: sy, r: '7', fill: 'none', stroke: tipColor, 'stroke-width': '1', opacity: '0.3' }));
+
+  // Arc showing theta angle (from north pole to vector)
+  if (theta > 0.05) {
+    const arcSteps = 18;
+    let arcPath = '';
+    for (let i = 0; i <= arcSteps; i++) {
+      const t2 = (theta / arcSteps) * i;
+      const ax2 = cx + R * 0.35 * Math.sin(t2) * Math.cos(phi) * perspX;
+      const ay2 = cy - R * 0.35 * (Math.cos(t2) - Math.sin(t2) * Math.sin(phi) * 0.28);
+      arcPath += (i === 0 ? 'M' : 'L') + ax2 + ',' + ay2;
+    }
+    svgEl.appendChild(mkEl('path', { d: arcPath, fill: 'none', stroke: '#fbbf24', 'stroke-width': '0.8', opacity: '0.5', 'stroke-dasharray': '2,1' }));
+    // θ label
+    const midT = theta / 2;
+    const thetaLabelX = cx + R * 0.42 * Math.sin(midT) * 0.9 + 6;
+    const thetaLabelY = cy - R * 0.42 * Math.cos(midT) + 3;
+    const thetaTxt = mkEl('text', { x: thetaLabelX, y: thetaLabelY, fill: '#fbbf24', 'font-size': '7', 'font-family': 'JetBrains Mono', opacity: '0.8' });
+    thetaTxt.textContent = 'θ';
+    svgEl.appendChild(thetaTxt);
+  }
+
+  // State label below
+  const stateStr = getStateLabel(theta, phi);
+  const stElem = mkEl('text', { x: cx, y: H - 6, fill: color, 'font-size': '8', 'font-family': 'JetBrains Mono', 'text-anchor': 'middle', 'font-weight': '700', opacity: '0.9' });
+  stElem.textContent = stateStr;
+  svgEl.appendChild(stElem);
+}
+
+function getStateLabel(theta, phi) {
+  const eps = 0.15;
+  if (theta < eps) return '|0⟩';
+  if (theta > Math.PI - eps) return '|1⟩';
+  const phiMod = ((phi % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+  if (Math.abs(theta - Math.PI/2) < eps) {
+    if (phiMod < eps || phiMod > 2*Math.PI - eps) return '|+⟩';
+    if (Math.abs(phiMod - Math.PI) < eps) return '|-⟩';
+    if (Math.abs(phiMod - Math.PI/2) < eps) return '|+i⟩';
+    if (Math.abs(phiMod - 3*Math.PI/2) < eps) return '|-i⟩';
+    return '|ψ⟩';
+  }
+  return '|ψ⟩';
+}
+
+function anglesLabel(theta, phi) {
+  const td = Math.round(theta * 180 / Math.PI);
+  const pd = Math.round(((phi % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI) * 180 / Math.PI);
+  return `θ=${td}° φ=${pd}°`;
+}
+
+function renderBlochSpheres() {
+  const colors = { q0: '#c3f5ff', q1: '#f8acff', q2: '#4ade80' };
+  const qubitStateColors = { q0: '#c3f5ff', q1: '#f8acff', q2: '#849396' };
+  ['q0', 'q1', 'q2'].forEach(q => {
+    const s = blochState[q];
+    const svgEl = document.getElementById('bloch-' + q);
+    if (!svgEl) return;
+    const col = s.mixed ? '#ffb4ab' : colors[q];
+    drawBlochSphere(svgEl, s.theta, s.phi, s.mixed, col);
+    const stateEl = document.getElementById('bloch-' + q + '-state');
+    const anglesEl = document.getElementById('bloch-' + q + '-angles');
+    if (stateEl) {
+      stateEl.textContent = s.mixed ? '|?⟩ mixed' : getStateLabel(s.theta, s.phi);
+      stateEl.style.color = col;
+    }
+    if (anglesEl) {
+      anglesEl.textContent = s.mixed ? 'decoherent' : anglesLabel(s.theta, s.phi);
+    }
+  });
+}
+
+function updateBlochFromStep(step) {
+  if (!step) return;
+
+  let gateKey = 'default';
+  let explanation = gateExplanations.default;
+
+  // Determine which gate is active and apply transforms
+  if (!step.laser && !step.transport && step.label && step.label.toLowerCase().includes('prep')) {
+    // State preparation: reset to input values
+    blochState.q0 = { theta: state.inputA === 1 ? Math.PI : 0, phi: 0, mixed: false };
+    blochState.q1 = { theta: state.inputB === 1 ? Math.PI : 0, phi: 0, mixed: false };
+    blochState.q2 = { theta: 0, phi: 0, mixed: false };
+    gateKey = 'prep'; explanation = gateExplanations.prep;
+  } else if (step.transport) {
+    // Shuttle: state preserved
+    gateKey = 'transport'; explanation = gateExplanations.transport;
+  } else if (step.noisy && step.cascade) {
+    // Cascade decoherence: Q2 goes mixed
+    blochState.q2 = { theta: Math.PI/2, phi: Math.PI/3, mixed: true };
+    blochState.q0.theta = Math.min(blochState.q0.theta + 0.15, Math.PI);
+    gateKey = 'noisy'; explanation = gateExplanations.noisy;
+  } else if (step.noisy) {
+    // Partial decoherence
+    blochState.q2.phi += 0.4; // slight phase noise
+    gateKey = 'noisy'; explanation = gateExplanations.noisy;
+  } else if (step.readout) {
+    // Measurement collapses state
+    const collapseQ = (q, excKey) => {
+      const ex = step[excKey];
+      if (ex === false) return;
+      blochState[q] = { theta: ex ? Math.PI : 0, phi: 0, mixed: false };
+    };
+    collapseQ('q0', 'ionAEx'); collapseQ('q1', 'ionBEx'); collapseQ('q2', 'ionCEx');
+    if (step.ionCState === '|?⟩') blochState.q2 = { theta: Math.PI/2, phi: 0, mixed: true };
+    gateKey = 'readout'; explanation = gateExplanations.readout;
+  } else if (step.entangle) {
+    // Entangling gate (MS or CNOT)
+    if (step.laserTarget === 'AB') {
+      // MS on Q0 and Q1
+      [blochState.q0, blochState.q1].forEach(qs => {
+        const [nt, np] = gateTransforms.MS(qs.theta, qs.phi);
+        qs.theta = nt; qs.phi = np;
+      });
+      gateKey = 'MS'; explanation = gateExplanations.MS;
+    } else if (step.laserTarget === 'BC') {
+      // MS on Q1 and Q2
+      [blochState.q1, blochState.q2].forEach(qs => {
+        const [nt, np] = gateTransforms.MS(qs.theta, qs.phi);
+        qs.theta = nt; qs.phi = np;
+        qs.mixed = false;
+      });
+      gateKey = 'MS'; explanation = gateExplanations.MS;
+    }
+  } else if (step.laser) {
+    // Single-qubit gates — infer from label
+    const lbl = step.label;
+    if (lbl.includes('π-pulse') || lbl.includes('Rabi')) {
+      // X gate on Q0
+      const [nt, np] = gateTransforms.X(blochState.q0.theta, blochState.q0.phi);
+      blochState.q0 = { theta: nt, phi: np, mixed: false };
+      gateKey = 'X'; explanation = gateExplanations.X;
+    } else if (lbl.includes('H gate') || lbl.includes('Hadamard') || lbl.includes('π/2 pulse')) {
+      // H gate on Q1
+      const [nt, np] = gateTransforms.H(blochState.q1.theta, blochState.q1.phi);
+      blochState.q1 = { theta: nt, phi: np, mixed: false };
+      gateKey = 'H'; explanation = gateExplanations.H;
+    } else if (lbl.includes('Rz') || lbl.includes('Disentangling')) {
+      // Rz on Q0
+      const [nt, np] = gateTransforms.Rz(blochState.q0.theta, blochState.q0.phi);
+      blochState.q0 = { theta: nt, phi: np, mixed: false };
+      gateKey = 'Rz'; explanation = gateExplanations.Rz;
+    } else if (lbl.includes('CNOT') && step.laserTarget === 'AB') {
+      // CNOT Q0 controls Q1
+      if (state.inputA === 1) {
+        const [nt, np] = gateTransforms.X(blochState.q1.theta, blochState.q1.phi);
+        blochState.q1 = { theta: nt, phi: np, mixed: false };
+      }
+      gateKey = 'CNOT'; explanation = gateExplanations.CNOT;
+    } else if (lbl.includes('T₂') || lbl.includes('T₂ COHER')) {
+      gateKey = 'noisy'; explanation = gateExplanations.noisy;
+    }
+  }
+
+  // Apply wise_opt T gate (transport-assisted)
+  if (step.wise && step.label && step.label.includes('T gate')) {
+    const [nt, np] = gateTransforms.T(blochState.q0.theta, blochState.q0.phi);
+    blochState.q0 = { theta: nt, phi: np, mixed: false };
+    gateKey = 'T'; explanation = gateExplanations.T;
+  }
+
+  // Update UI
+  const gateLabelEl = document.getElementById('blochGateLabel');
+  const explainEl = document.getElementById('blochExplain');
+  const gateNames = { prep:'State Prep', X:'X (π-pulse)', H:'H (Hadamard)', MS:'MS Gate', CNOT:'CNOT', Rz:'Rz Phase', T:'T Gate', readout:'Measurement', transport:'Ion Shuttle', noisy:'⚠ Decoherence', entangle:'Entangling', default:'Gate Op' };
+  const gateColors = { prep:'#849396', X:'#c3f5ff', H:'#c3f5ff', MS:'#f8acff', CNOT:'#f8acff', Rz:'#c3f5ff', T:'#4ade80', readout:'#00e5ff', transport:'#4ade80', noisy:'#ffb4ab', default:'#bac9cc' };
+
+  if (gateLabelEl) {
+    gateLabelEl.textContent = gateNames[gateKey] || gateKey;
+    gateLabelEl.style.color = gateColors[gateKey] || '#bac9cc';
+    gateLabelEl.style.borderColor = (gateColors[gateKey] || '#3b494c') + '50';
+  }
+  if (explainEl) explainEl.textContent = explanation;
+
+  renderBlochSpheres();
+}
+
+// Hook into applyStep to update Bloch spheres
+const _origApplyStep = applyStep;
+// Monkey-patch: call updateBlochFromStep after original applyStep
+const _patchedApplyStep = function(step) {
+  _origApplyStep(step);
+  updateBlochFromStep(step);
+};
+// Override simStep to use patched version
+const _origSimStep = simStep;
+
+// Override simReset to also reset Bloch spheres
+const _origSimReset = simReset;
+
+// ═══ INIT ═══
+(function init() {
+  buildTruthTable();
+  initCircuitGrid();
+  setInput('A',0); setInput('B',0);
+  showPage('trap');
+  state.simSteps=buildSimSteps(0,0,'halfAdder');
+  document.getElementById('stepCounter').textContent=`STEP: 0/${state.simSteps.length}`;
+  drawMiniCircuit('halfAdder', undefined);
+
+  // Initialize Bloch spheres
+  blochState.q0 = { theta: 0, phi: 0, mixed: false };
+  blochState.q1 = { theta: 0, phi: 0, mixed: false };
+  blochState.q2 = { theta: 0, phi: 0, mixed: false };
+  renderBlochSpheres();
+
+  // Patch simStep to also update Bloch
+  window._origSimStepGlobal = simStep;
+  window.simStep = function() {
+    if (state.simStep >= state.simSteps.length) return;
+    const step = state.simSteps[state.simStep];
+    applyStep(step);
+    updateBlochFromStep(step);
+    state.simStep++;
+    document.getElementById('stepCounter').textContent=`STEP: ${state.simStep}/${state.simSteps.length}`;
+    document.getElementById('simProgress').style.width=`${(state.simStep/state.simSteps.length)*100}%`;
+  };
+
+  // Patch simToggle to use updated simStep
+  window.simToggle = function() {
+    if (state.simRunning) {
+      clearInterval(state.simTimer); state.simRunning=false;
+      document.getElementById('simBtn').querySelector('span').textContent='play_arrow';
+      document.getElementById('simBtnLabel').textContent='Run';
+    } else {
+      if (state.simStep>=state.simSteps.length) simReset();
+      state.simRunning=true;
+      document.getElementById('simBtn').querySelector('span').textContent='pause';
+      document.getElementById('simBtnLabel').textContent='Pause';
+      state.simTimer=setInterval(()=>{
+        if(state.simStep<state.simSteps.length){
+          window.simStep();
+        } else {
+          clearInterval(state.simTimer); state.simRunning=false;
+          document.getElementById('simBtn').querySelector('span').textContent='play_arrow';
+          document.getElementById('simBtnLabel').textContent='Run';
+        }
+      }, 1800);
+    }
+  };
+
+  // Patch simReset to reset Bloch spheres too
+  window.simReset = function() {
+    _origSimReset();
+    blochState.q0 = { theta: state.inputA===1?Math.PI:0, phi: 0, mixed: false };
+    blochState.q1 = { theta: state.inputB===1?Math.PI:0, phi: 0, mixed: false };
+    blochState.q2 = { theta: 0, phi: 0, mixed: false };
+    renderBlochSpheres();
+    const explainEl = document.getElementById('blochExplain');
+    if (explainEl) explainEl.textContent = 'Press ▶ to simulate and watch each gate operation rotate the Bloch sphere state vector in real time.';
+    const gateLabelEl = document.getElementById('blochGateLabel');
+    if (gateLabelEl) { gateLabelEl.textContent = 'No gate applied'; gateLabelEl.style.color = '#849396'; }
+  };
+
+  // Patch setInput to also update Bloch initial states
+  const _origSetInput = setInput;
+  window.setInput = function(q, v) {
+    _origSetInput(q, v);
+    if (q==='A') blochState.q0 = { theta: v===1?Math.PI:0, phi: 0, mixed: false };
+    else blochState.q1 = { theta: v===1?Math.PI:0, phi: 0, mixed: false };
+    renderBlochSpheres();
+  };
+})();
+</script>
+</body>
+</html>

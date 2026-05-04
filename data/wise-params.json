@@ -1,0 +1,17 @@
+{
+  "architecture": "WISE (Wiring using Integrated Switching Electronics)",
+  "paper": "arXiv:2305.12773",
+  "signal_sources": 200,
+  "qubits_supported": 1000,
+  "gate_layers_per_second": {
+    "min": 40,
+    "max": 2600
+  },
+  "electrodes": {
+    "dynamic": "shared DAC via on-chip switches for transport",
+    "shim": "slow voltage tuning for stray field compensation",
+    "gate_zone": "laser-addressed, individually controlled"
+  },
+  "io_reduction": "~10x vs direct wiring",
+  "key_advantage": "simple switches integrated in trap, complex electronics remain external"
+}

@@ -1,0 +1,14 @@
+{
+  "architecture": "Traditional QCCD",
+  "signal_sources": 1000,
+  "qubits_supported": 50,
+  "gate_layers_per_second": {
+    "min": 5,
+    "max": 20
+  },
+  "limitations": [
+    "I/O bottleneck",
+    "cable density",
+    "cryogenic feedthrough limits"
+  ]
+}
